@@ -48,6 +48,7 @@ Submitted → Under Review → Approved / Rejected → Paid → Closed
 
 ClaimFlow follows a layered backend architecture:
 
+```text
 Client (Swagger UI / Future Frontend)
         ↓
 FastAPI Application Layer
@@ -57,6 +58,7 @@ Service Layer (Business Logic)
 SQLAlchemy ORM
         ↓
 Supabase (Managed PostgreSQL Cloud Database)
+```
 
 This design ensures separation of concerns, scalability, and maintainability.
 
@@ -64,6 +66,7 @@ This design ensures separation of concerns, scalability, and maintainability.
 
 ## Project Structure
 
+```text
 claims_management/
 │
 ├── app/
@@ -84,6 +87,7 @@ claims_management/
 ├── Dockerfile
 ├── .env
 └── README.md
+```
 
 ---
 
@@ -169,18 +173,24 @@ claims_management/
 
 ### 1. Clone Repository
 
+```bash
 git clone https://github.com/your-username/claimflow.git  
 cd claimflow  
+```
 
 ### 2. Create Virtual Environment
 
+```bash
 python -m venv venv  
 source venv/bin/activate  (Mac/Linux)  
 venv\Scripts\activate     (Windows)
+```
 
 ### 3. Install Dependencies
 
+```bash
 pip install -r requirements.txt
+```
 
 ### 4. Configure Supabase
 
@@ -190,14 +200,18 @@ pip install -r requirements.txt
 
 Create a `.env` file:
 
+```env
 DATABASE_URL=postgresql://username:password@db.supabase.co:5432/postgres  
 SECRET_KEY=your_secret_key  
 ALGORITHM=HS256  
 ACCESS_TOKEN_EXPIRE_MINUTES=60  
+```
 
 ### 5. Run Server
 
+```bash
 uvicorn app.main:app --reload  
+```
 
 Access API documentation at:  
 http://127.0.0.1:8000/docs  
@@ -208,17 +222,23 @@ http://127.0.0.1:8000/docs
 
 ### Build Image
 
+```bash
 docker build -t claimflow .
+```
 
 ### Run Container
 
+```bash
 docker run -p 8000:8000 claimflow
+```
 
 ---
 
 ## Running Tests
 
+```bash
 pytest
+```
 
 ---
 
