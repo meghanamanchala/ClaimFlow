@@ -29,5 +29,3 @@ class ClaimResponse(BaseModel):
     description: str
 
     model_config = ConfigDict(from_attributes=True)
-
-        
