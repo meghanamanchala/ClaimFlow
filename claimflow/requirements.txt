@@ -1,0 +1,8 @@
+FastAPI
+SQLAlchemy
+python-jose
+passlib[bcrypt]
+uvicorn
+pytest
+supabase-py
+dotenv
