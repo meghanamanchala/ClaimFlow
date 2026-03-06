@@ -1,4 +1,5 @@
 from enum import Enum
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -37,6 +38,7 @@ class Token(BaseModel):
 class ClaimCreate(BaseModel):
     claim_amount: float
     description: str
+    policy_id: int
 
 
 class PolicyCreate(BaseModel):
@@ -56,9 +58,11 @@ class PolicyResponse(BaseModel):
 
 class ClaimResponse(BaseModel):
     id: int
+    policy_id: int
     claim_amount: float
     status: str
     description: str
+    created_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -129,11 +129,17 @@ def create_claim(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["policyholder"]))
 ):
+    policy = db.query(Policy).filter(Policy.id == claim.policy_id).first()
+    if policy is None:
+        raise HTTPException(status_code=404, detail="Policy not found")
+
+    if policy.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cannot file claim for another user's policy")
 
     new_claim = Claim(
         claim_amount=claim.claim_amount,
         description=claim.description,
-        user_id=current_user.id
+        policy_id=claim.policy_id
     )
 
     db.add(new_claim)
@@ -153,7 +159,7 @@ def get_my_claims(
     if user_role in {"agent", "admin"}:
         claims = db.query(Claim).all()
     else:
-        claims = db.query(Claim).filter(Claim.user_id == current_user.id).all()
+        claims = db.query(Claim).join(Policy).filter(Policy.user_id == current_user.id).all()
 
     return claims
 
