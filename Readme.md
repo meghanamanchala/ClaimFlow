@@ -225,7 +225,19 @@ docker build -t claimflow .
 ### Run Container
 
 ```bash
-docker run -p 8000:8000 claimflow
+docker run --env-file .env -p 8000:8000 claimflow
+docker compose up --build```
+
+### Run With Docker Compose
+
+```bash
+docker compose up --build
+```
+
+To stop:
+
+```bash
+docker compose down
 ```
 
 ---
