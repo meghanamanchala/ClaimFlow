@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Float
+from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime
+from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -12,7 +13,7 @@ class User(Base):
     password = Column(String)
     role = Column(String)  # policyholder / agent / admin
 
-    claims = relationship("Claim", back_populates="user")
+    policies = relationship("Policy", back_populates="user")
 
 
 class Policy(Base):
@@ -23,6 +24,9 @@ class Policy(Base):
     coverage_amount = Column(Float)
     user_id = Column(Integer, ForeignKey("users.id"))
 
+    user = relationship("User", back_populates="policies")
+    claims = relationship("Claim", back_populates="policy")
+
 
 class Claim(Base):
     __tablename__ = "claims"
@@ -31,6 +35,7 @@ class Claim(Base):
     claim_amount = Column(Float)
     status = Column(String, default="Submitted")
     description = Column(String)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    policy_id = Column(Integer, ForeignKey("policies.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
 
-    user = relationship("User", back_populates="claims")
+    policy = relationship("Policy", back_populates="claims")
