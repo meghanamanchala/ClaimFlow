@@ -1,10 +1,27 @@
+from enum import Enum
+
 from pydantic import BaseModel, ConfigDict
+
+
+class RoleEnum(str, Enum):
+    policyholder = "policyholder"
+    agent = "agent"
+    admin = "admin"
+
+
+class ClaimStatusEnum(str, Enum):
+    submitted = "Submitted"
+    under_review = "Under Review"
+    approved = "Approved"
+    rejected = "Rejected"
+    paid = "Paid"
+    closed = "Closed"
 
 class UserCreate(BaseModel):
     name: str
     email: str
     password: str
-    role: str
+    role: RoleEnum
 
 
 class UserLogin(BaseModel):
@@ -29,3 +46,7 @@ class ClaimResponse(BaseModel):
     description: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ClaimStatusUpdate(BaseModel):
+    status: ClaimStatusEnum
