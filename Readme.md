@@ -67,26 +67,21 @@ This design ensures separation of concerns, scalability, and maintainability.
 ## Project Structure
 
 ```text
-claims_management/
+claimflow/
 │
-├── app/
-│   ├── main.py
-│   ├── database.py
-│   ├── models.py
-│   ├── schemas.py
-│   ├── auth.py
-│   ├── dependencies.py
-│   └── routers/
-│       ├── users.py
-│       ├── policies.py
-│       ├── claims.py
-│       └── admin.py
-│
-├── tests/
-├── requirements.txt
-├── Dockerfile
-├── .env
-└── README.md
+├── Readme.md
+└── claims-management/
+        ├── main.py
+        ├── database.py
+        ├── models.py
+        ├── schemas.py
+        ├── auth.py
+        ├── dependencies.py
+        ├── claims.py
+        ├── jwt_handler.py
+        ├── requirements.txt
+        ├── tests/
+        └── .env
 ```
 
 ---
@@ -159,13 +154,13 @@ claims_management/
 - GET /users (Admin Only)
 
 ### Policies
-- POST /policies
-- GET /policies
+- POST /policies (Admin Only)
+- GET /policies (Policyholder: Own Policies, Agent/Admin: All Policies)
 
 ### Claims
-- POST /claims
-- GET /claims
-- PATCH /claims/{id}/status
+- POST /claims (Policyholder Only)
+- GET /claims   (Policyholder: Own Claims, Agent/Admin: All Claims)
+- PATCH /claims/{id}/status (Agent/Admin Only)
 
 ---
 
@@ -175,7 +170,8 @@ claims_management/
 
 ```bash
 git clone https://github.com/your-username/claimflow.git  
-cd claimflow  
+cd claimflow
+cd claims-management
 ```
 
 ### 2. Create Virtual Environment
@@ -183,7 +179,7 @@ cd claimflow
 ```bash
 python -m venv venv  
 source venv/bin/activate  (Mac/Linux)  
-venv\Scripts\activate     (Windows)
+source venv/Scripts/Activate     (Windows)
 ```
 
 ### 3. Install Dependencies
@@ -210,7 +206,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60
 ### 5. Run Server
 
 ```bash
-uvicorn app.main:app --reload  
+uvicorn main:app --reload
 ```
 
 Access API documentation at:  

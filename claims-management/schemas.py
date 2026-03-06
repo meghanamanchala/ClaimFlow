@@ -39,6 +39,21 @@ class ClaimCreate(BaseModel):
     description: str
 
 
+class PolicyCreate(BaseModel):
+    policy_number: str
+    coverage_amount: float
+    user_id: int
+
+
+class PolicyResponse(BaseModel):
+    id: int
+    policy_number: str
+    coverage_amount: float
+    user_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ClaimResponse(BaseModel):
     id: int
     claim_amount: float
