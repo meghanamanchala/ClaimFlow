@@ -1,18 +1,23 @@
+from typing import List
+
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
+from claims import router as claims_router
 
 from database import engine, SessionLocal
 from models import Base, User, Claim
-from schemas import UserCreate, Token, ClaimCreate
+from schemas import UserCreate, ClaimCreate, ClaimResponse, ClaimStatusUpdate
 from auth import hash_password, verify_password
-from jwt_handler import create_access_token, decode_access_token
+from jwt_handler import create_access_token
+from dependencies import get_current_user, require_roles
 
 app = FastAPI()
 
-Base.metadata.create_all(bind=engine)
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+app.include_router(claims_router)
+
+Base.metadata.create_all(bind=engine)
 
 
 # 🔹 Database Dependency
@@ -22,24 +27,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-# 🔹 Get Current User
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-
-    payload = decode_access_token(token)
-
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    email = payload.get("sub")
-
-    user = db.query(User).filter(User.email == email).first()
-
-    if user is None:
-        raise HTTPException(status_code=401, detail="User not found")
-
-    return user
 
 
 @app.get("/")
@@ -60,7 +47,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         name=user.name,
         email=user.email,
         password=hash_password(user.password),
-        role=user.role
+        role=user.role.value
     )
 
     db.add(new_user)
@@ -96,11 +83,11 @@ def get_me(current_user: User = Depends(get_current_user)):
 
 
 # 🔹 Create Claim
-@app.post("/claims")
+@app.post("/claims", response_model=ClaimResponse)
 def create_claim(
     claim: ClaimCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_roles(["policyholder"]))
 ):
 
     new_claim = Claim(
@@ -113,16 +100,53 @@ def create_claim(
     db.commit()
     db.refresh(new_claim)
 
-    return {"message": "Claim submitted successfully"}
+    return new_claim
 
 
 # 🔹 View My Claims
-@app.get("/claims")
+@app.get("/claims", response_model=List[ClaimResponse])
 def get_my_claims(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-
-    claims = db.query(Claim).filter(Claim.user_id == current_user.id).all()
+    user_role = (current_user.role or "").lower()
+    if user_role in {"agent", "admin"}:
+        claims = db.query(Claim).all()
+    else:
+        claims = db.query(Claim).filter(Claim.user_id == current_user.id).all()
 
     return claims
+
+
+@app.patch("/claims/{claim_id}/status", response_model=ClaimResponse)
+def update_claim_status(
+    claim_id: int,
+    payload: ClaimStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["agent", "admin"]))
+):
+    claim = db.query(Claim).filter(Claim.id == claim_id).first()
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    claim.status = payload.status.value
+    db.commit()
+    db.refresh(claim)
+    return claim
+
+
+@app.get("/users")
+def get_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    users = db.query(User).all()
+    return [
+        {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "role": user.role
+        }
+        for user in users
+    ]
