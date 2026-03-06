@@ -6,8 +6,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from claims import router as claims_router
 
 from database import engine, SessionLocal
-from models import Base, User, Claim
-from schemas import UserCreate, ClaimCreate, ClaimResponse, ClaimStatusUpdate
+from models import Base, User, Claim, Policy
+from schemas import UserCreate, ClaimCreate, ClaimResponse, ClaimStatusUpdate, PolicyCreate, PolicyResponse
 from auth import hash_password, verify_password
 from jwt_handler import create_access_token
 from dependencies import get_current_user, require_roles
@@ -80,6 +80,46 @@ def get_me(current_user: User = Depends(get_current_user)):
         "email": current_user.email,
         "role": current_user.role
     }
+
+
+@app.post("/policies", response_model=PolicyResponse)
+def create_policy(
+    policy: PolicyCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    user = db.query(User).filter(User.id == policy.user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Target user not found")
+
+    existing_policy = db.query(Policy).filter(Policy.policy_number == policy.policy_number).first()
+    if existing_policy:
+        raise HTTPException(status_code=400, detail="Policy number already exists")
+
+    new_policy = Policy(
+        policy_number=policy.policy_number,
+        coverage_amount=policy.coverage_amount,
+        user_id=policy.user_id
+    )
+
+    db.add(new_policy)
+    db.commit()
+    db.refresh(new_policy)
+    return new_policy
+
+
+@app.get("/policies", response_model=List[PolicyResponse])
+def get_policies(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user_role = (current_user.role or "").lower()
+    if user_role in {"agent", "admin"}:
+        policies = db.query(Policy).all()
+    else:
+        policies = db.query(Policy).filter(Policy.user_id == current_user.id).all()
+
+    return policies
 
 
 # 🔹 Create Claim
