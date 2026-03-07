@@ -520,6 +520,20 @@ body {
   color: #1b2f4b;
 }
 
+.topbar-logout {
+  border: 1px solid #d7e0ef;
+  background: #ffffff;
+  color: #2f4568;
+  border-radius: 9px;
+  padding: 0.38rem 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.topbar-logout:hover {
+  background: #f4f8ff;
+}
+
 .dashboard-content {
   padding: 1.5rem;
 }

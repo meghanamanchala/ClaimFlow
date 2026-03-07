@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ClaimFlow">
+  <rect width="64" height="64" rx="14" fill="#2a6edb" />
+  <path d="M32 11l17 7v12c0 12-7.2 22.4-17 25-9.8-2.6-17-13-17-25V18l17-7z" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M24.5 31.5l6 6 10-10" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -20,14 +20,38 @@ import AdminAnalyticsView from '../views/AdminAnalyticsView.vue';
 import AdminPermissionsView from '../views/AdminPermissionsView.vue';
 import AdminSettingsView from '../views/AdminSettingsView.vue';
 
+function getStoredRole() {
+  return localStorage.getItem('claimflow_role');
+}
+
+function getRoleHomePath(role) {
+  if (role === 'agent') {
+    return '/agent/dashboard';
+  }
+
+  if (role === 'admin') {
+    return '/admin/dashboard';
+  }
+
+  if (role === 'policyholder') {
+    return '/dashboard';
+  }
+
+  return '/login';
+}
+
 const routes = [
   {
     path: '/',
-    redirect: '/dashboard'
+    redirect: () => getRoleHomePath(getStoredRole())
   },
   {
     path: '/',
     component: PolicyholderLayout,
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['policyholder']
+    },
     children: [
       {
         path: 'dashboard',
@@ -59,16 +83,26 @@ const routes = [
   {
     path: '/login',
     name: 'login',
+    meta: {
+      public: true
+    },
     component: LoginView
   },
   {
     path: '/register',
     name: 'register',
+    meta: {
+      public: true
+    },
     component: RegisterView
   },
   {
     path: '/agent',
     component: AgentLayout,
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['agent']
+    },
     children: [
       {
         path: '',
@@ -99,6 +133,10 @@ const routes = [
   {
     path: '/admin',
     component: AdminLayout,
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['admin']
+    },
     children: [
       {
         path: '',
@@ -135,12 +173,45 @@ const routes = [
         component: AdminSettingsView
       }
     ]
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: () => getRoleHomePath(getStoredRole())
   }
 ];
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+});
+
+router.beforeEach((to) => {
+  const token = localStorage.getItem('claimflow_token');
+  const role = getStoredRole();
+
+  if (to.meta.public) {
+    if (token && role) {
+      return getRoleHomePath(role);
+    }
+
+    return true;
+  }
+
+  if (to.meta.requiresAuth && !token) {
+    return '/login';
+  }
+
+  const allowedRoles = to.matched.flatMap((record) => record.meta.allowedRoles || []);
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+    if (!token || !role) {
+      return '/login';
+    }
+
+    return getRoleHomePath(role);
+  }
+
+  return true;
 });
 
 export default router;
