@@ -5,13 +5,24 @@
         <h1>Documents</h1>
         <p>Manage your uploaded files and claim documents</p>
       </div>
-      <button type="button" class="primary-btn" @click="openPicker">Upload Document</button>
+      <div class="upload-controls">
+        <select v-model="selectedClaimId" class="filter-select">
+          <option disabled value="">Select Claim</option>
+          <option v-for="claim in claims" :key="claim.id" :value="claim.id">
+            {{ claim.claimNumber }}
+          </option>
+        </select>
+        <button type="button" class="primary-btn" @click="openPicker">Upload Document</button>
+      </div>
       <input ref="picker" type="file" class="hidden-file-input" @change="addDocument" />
     </header>
 
     <article class="panel">
       <h2>All Documents</h2>
-      <table class="data-table">
+      <p v-if="loading" class="empty-state">Loading documents...</p>
+      <p v-else-if="errorMessage" class="message error">{{ errorMessage }}</p>
+
+      <table v-else class="data-table">
         <thead>
           <tr>
             <th>Name</th>
@@ -28,14 +39,16 @@
             <td>{{ doc.type }}</td>
             <td>{{ doc.size }}</td>
             <td>{{ doc.date }}</td>
-            <td>{{ doc.claim }}</td>
+            <td>{{ doc.claimNumber }}</td>
             <td>
               <div class="table-actions">
                 <button type="button" @click="previewDocument(doc)">View</button>
                 <button type="button" @click="downloadDocument(doc)">Download</button>
-                <button type="button" class="danger-action" @click="removeDocument(doc.id)">Delete</button>
               </div>
             </td>
+          </tr>
+          <tr v-if="documents.length === 0">
+            <td colspan="6" class="empty-state">No documents uploaded yet.</td>
           </tr>
         </tbody>
       </table>
@@ -45,88 +58,98 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { getClaims, uploadClaimDocument } from '../../services/api';
+import { formatDate } from '../../services/claimTransforms';
 
 const picker = ref(null);
 const toast = ref('');
+const claims = ref([]);
+const selectedClaimId = ref('');
+const loading = ref(true);
+const errorMessage = ref('');
 
-const documents = ref([
-  {
-    id: 1,
-    name: 'Police Report - Auto Incident',
-    type: 'PDF',
-    size: '2.4 MB',
-    date: 'Mar 2, 2026',
-    claim: 'CLM-2024-001'
-  },
-  {
-    id: 2,
-    name: 'Medical Bills Receipt',
-    type: 'PDF',
-    size: '1.1 MB',
-    date: 'Feb 15, 2026',
-    claim: 'CLM-2024-002'
-  },
-  {
-    id: 3,
-    name: 'Property Damage Photos',
-    type: 'JPG',
-    size: '5.8 MB',
-    date: 'Jan 28, 2026',
-    claim: 'CLM-2024-003'
-  },
-  {
-    id: 4,
-    name: 'Insurance Policy Copy',
-    type: 'PDF',
-    size: '890 KB',
-    date: 'Jan 10, 2026',
-    claim: '-'
-  },
-  {
-    id: 5,
-    name: 'Repair Estimate',
-    type: 'PDF',
-    size: '340 KB',
-    date: 'Mar 4, 2026',
-    claim: 'CLM-2024-001'
-  }
-]);
+const documents = computed(() => {
+  const flattened = [];
+
+  claims.value.forEach((claim) => {
+    (claim.documents || []).forEach((doc, index) => {
+      flattened.push({
+        id: `${claim.id}-${index}-${doc.fileName}`,
+        name: doc.fileName,
+        type: doc.fileType,
+        size: `${Number(doc.size || 0).toFixed(1)} MB`,
+        date: formatDate(doc.uploadedAt),
+        claimNumber: claim.claimNumber,
+        fileUrl: doc.fileUrl
+      });
+    });
+  });
+
+  return flattened.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+});
 
 function openPicker() {
-  picker.value?.click();
-}
-
-function addDocument(event) {
-  const file = event.target.files?.[0];
-
-  if (!file) {
+  if (!selectedClaimId.value) {
+    toast.value = 'Select a claim before uploading a document.';
     return;
   }
 
-  documents.value.unshift({
-    id: Date.now(),
-    name: file.name,
-    type: (file.name.split('.').pop() || 'FILE').toUpperCase(),
-    size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
-    date: 'Today',
-    claim: '-'
-  });
+  picker.value?.click();
+}
 
-  toast.value = 'Document uploaded.';
-  event.target.value = '';
+async function addDocument(event) {
+  const file = event.target.files?.[0];
+
+  if (!file || !selectedClaimId.value) {
+    return;
+  }
+
+  try {
+    await uploadClaimDocument(selectedClaimId.value, {
+      fileName: file.name,
+      fileUrl: file.name,
+      fileType: (file.name.split('.').pop() || 'file').toUpperCase(),
+      size: Number((file.size / 1024 / 1024).toFixed(3))
+    });
+
+    const { data } = await getClaims();
+    claims.value = data || [];
+    toast.value = 'Document uploaded successfully.';
+  } catch (error) {
+    toast.value = error.response?.data?.detail || 'Document upload failed.';
+  } finally {
+    event.target.value = '';
+  }
 }
 
 function previewDocument(doc) {
-  toast.value = `Preview requested for ${doc.name}.`;
+  if (!doc.fileUrl) {
+    toast.value = 'No file URL available for preview.';
+    return;
+  }
+
+  window.open(doc.fileUrl, '_blank', 'noopener,noreferrer');
 }
 
 function downloadDocument(doc) {
-  toast.value = `Download requested for ${doc.name}.`;
+  previewDocument(doc);
 }
 
-function removeDocument(id) {
-  documents.value = documents.value.filter((doc) => doc.id !== id);
-  toast.value = 'Document deleted.';
-}
+onMounted(async () => {
+  loading.value = true;
+  errorMessage.value = '';
+
+  try {
+    const { data } = await getClaims();
+    claims.value = data || [];
+    if (claims.value[0]) {
+      selectedClaimId.value = claims.value[0].id;
+    }
+  } catch (error) {
+    errorMessage.value = error.response?.data?.detail || 'Unable to load documents.';
+  } finally {
+    loading.value = false;
+  }
+});
 </script>

@@ -25,20 +25,20 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="user in filteredUsers" :key="user.email">
+          <tr v-for="user in filteredUsers" :key="user.id">
             <td>
               <div class="user-cell">
-                <div class="avatar-soft">{{ user.initials }}</div>
+                <div class="avatar-soft">{{ initialsFor(user.name) }}</div>
                 <div>
                   <p class="user-name">{{ user.name }}</p>
                   <p class="user-email">{{ user.email }}</p>
                 </div>
               </div>
             </td>
-            <td><span class="badge" :class="user.roleClass">{{ user.role }}</span></td>
-            <td><span class="badge" :class="user.statusClass">{{ user.status }}</span></td>
-            <td>{{ user.claims }}</td>
-            <td>{{ user.joined }}</td>
+            <td><span class="badge" :class="roleClass(user.role)">{{ roleLabel(user.role) }}</span></td>
+            <td><span class="badge" :class="statusClass(user.status)">{{ roleLabel(user.status) }}</span></td>
+            <td>{{ claimCount[user.id] || 0 }}</td>
+            <td>{{ formatDate(user.createdAt) }}</td>
             <td><button type="button" class="icon-btn">...</button></td>
           </tr>
         </tbody>
@@ -48,25 +48,60 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { getClaims, getUsers } from '../../services/api';
+import { formatDate, toTitleCase } from '../../services/claimTransforms';
 
 const search = ref('');
+const users = ref([]);
+const claims = ref([]);
 
-const users = [
-  { initials: 'SM', name: 'Sarah Mitchell', email: 'sarah@example.com', role: 'Policyholder', roleClass: 'badge-pending', status: 'Active', statusClass: 'badge-approved', claims: 3, joined: 'Jan 15, 2026' },
-  { initials: 'JD', name: 'John Davis', email: 'john@example.com', role: 'Policyholder', roleClass: 'badge-pending', status: 'Active', statusClass: 'badge-approved', claims: 1, joined: 'Feb 2, 2026' },
-  { initials: 'EB', name: 'Emily Brown', email: 'emily@example.com', role: 'Policyholder', roleClass: 'badge-pending', status: 'Active', statusClass: 'badge-approved', claims: 2, joined: 'Dec 10, 2025' },
-  { initials: 'JC', name: 'James Carter', email: 'james@claimflow.com', role: 'Agent', roleClass: 'badge-review', status: 'Active', statusClass: 'badge-approved', claims: 12, joined: 'Oct 1, 2025' },
-  { initials: 'LA', name: 'Lisa Anderson', email: 'lisa@claimflow.com', role: 'Agent', roleClass: 'badge-review', status: 'Active', statusClass: 'badge-approved', claims: 8, joined: 'Nov 15, 2025' },
-  { initials: 'MW', name: 'Mike Wilson', email: 'mike@example.com', role: 'Policyholder', roleClass: 'badge-pending', status: 'Inactive', statusClass: 'badge-inactive', claims: 0, joined: 'Mar 1, 2026' }
-];
+const claimCount = computed(() => {
+  return claims.value.reduce((acc, claim) => {
+    acc[claim.userId] = (acc[claim.userId] || 0) + 1;
+    return acc;
+  }, {});
+});
 
 const filteredUsers = computed(() => {
   const q = search.value.trim().toLowerCase();
+
   if (!q) {
-    return users;
+    return users.value;
   }
 
-  return users.filter((user) => `${user.name} ${user.email}`.toLowerCase().includes(q));
+  return users.value.filter((user) => `${user.name} ${user.email}`.toLowerCase().includes(q));
+});
+
+function initialsFor(name) {
+  return String(name || '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((token) => token[0]?.toUpperCase())
+    .join('');
+}
+
+function roleClass(role) {
+  return String(role || '').toLowerCase() === 'agent' ? 'badge-review' : 'badge-pending';
+}
+
+function statusClass(status) {
+  return String(status || '').toLowerCase() === 'active' ? 'badge-approved' : 'badge-inactive';
+}
+
+function roleLabel(value) {
+  return toTitleCase(value || 'unknown');
+}
+
+onMounted(async () => {
+  try {
+    const [usersResponse, claimsResponse] = await Promise.all([getUsers(), getClaims()]);
+    users.value = usersResponse.data || [];
+    claims.value = claimsResponse.data || [];
+  } catch {
+    users.value = [];
+    claims.value = [];
+  }
 });
 </script>

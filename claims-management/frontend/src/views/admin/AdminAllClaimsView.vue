@@ -12,16 +12,14 @@
       <input v-model="search" class="search-input" type="text" placeholder="Search claims..." />
       <select v-model="statusFilter" class="filter-select">
         <option value="all">All Status</option>
-        <option value="Under Review">Under Review</option>
-        <option value="Approved">Approved</option>
-        <option value="Pending">Pending</option>
-        <option value="Rejected">Rejected</option>
+        <option value="under_review">Under Review</option>
+        <option value="approved">Approved</option>
+        <option value="submitted">Pending</option>
+        <option value="rejected">Rejected</option>
       </select>
       <select v-model="agentFilter" class="filter-select">
         <option value="all">All Agents</option>
-        <option value="James Carter">James Carter</option>
-        <option value="Lisa Anderson">Lisa Anderson</option>
-        <option value="-">Unassigned</option>
+        <option v-for="agent in agentOptions" :key="agent" :value="agent">{{ agent }}</option>
       </select>
     </div>
 
@@ -41,46 +39,55 @@
         </thead>
         <tbody>
           <tr v-for="claim in filteredClaims" :key="claim.id">
-            <td><a href="#" @click.prevent>{{ claim.id }}</a></td>
-            <td>{{ claim.policyholder }}</td>
-            <td>{{ claim.agent }}</td>
-            <td>{{ claim.type }}</td>
-            <td>{{ claim.amount }}</td>
-            <td>{{ claim.date }}</td>
-            <td><span class="badge" :class="claim.statusClass">{{ claim.status }}</span></td>
+            <td><a href="#" @click.prevent>{{ claim.claimNumber }}</a></td>
+            <td>User #{{ claim.userId }}</td>
+            <td>{{ claim.agentId ? `Agent #${claim.agentId}` : '-' }}</td>
+            <td>{{ claim.claimType }}</td>
+            <td>{{ formatCurrency(claim.estimatedAmount) }}</td>
+            <td>{{ formatDate(claim.incidentDate) }}</td>
+            <td><span class="badge" :class="getStatusClass(claim.status)">{{ getStatusLabel(claim.status) }}</span></td>
             <td><a href="#" class="link-btn" @click.prevent>View</a></td>
           </tr>
         </tbody>
       </table>
+      <p v-if="!filteredClaims.length" class="empty-state">No claims found.</p>
     </article>
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { getClaims } from '../../services/api';
+import { formatCurrency, formatDate, getStatusClass, getStatusLabel } from '../../services/claimTransforms';
 
 const search = ref('');
 const statusFilter = ref('all');
 const agentFilter = ref('all');
+const claims = ref([]);
 
-const claims = [
-  { id: 'CLM-2024-001', policyholder: 'Sarah Mitchell', agent: 'James Carter', type: 'Auto', amount: '$4,500', date: 'Mar 2, 2026', status: 'Under Review', statusClass: 'badge-review' },
-  { id: 'CLM-2024-002', policyholder: 'Sarah Mitchell', agent: 'James Carter', type: 'Health', amount: '$1,200', date: 'Feb 15, 2026', status: 'Approved', statusClass: 'badge-approved' },
-  { id: 'CLM-2024-003', policyholder: 'Sarah Mitchell', agent: '-', type: 'Property', amount: '$12,000', date: 'Jan 28, 2026', status: 'Pending', statusClass: 'badge-pending' },
-  { id: 'CLM-2024-004', policyholder: 'John Davis', agent: 'James Carter', type: 'Health', amount: '$2,800', date: 'Mar 4, 2026', status: 'Pending', statusClass: 'badge-pending' },
-  { id: 'CLM-2024-005', policyholder: 'Emily Brown', agent: 'Lisa Anderson', type: 'Property', amount: '$18,500', date: 'Mar 1, 2026', status: 'Under Review', statusClass: 'badge-review' },
-  { id: 'CLM-2024-006', policyholder: 'Mike Wilson', agent: 'James Carter', type: 'Auto', amount: '$3,200', date: 'Feb 28, 2026', status: 'Pending', statusClass: 'badge-pending' },
-  { id: 'CLM-2024-007', policyholder: 'Tom Harris', agent: 'Lisa Anderson', type: 'Life', amount: '$50,000', date: 'Feb 20, 2026', status: 'Rejected', statusClass: 'badge-rejected' }
-];
+const agentOptions = computed(() => {
+  const ids = [...new Set(claims.value.filter((claim) => claim.agentId).map((claim) => `Agent #${claim.agentId}`))];
+  return ids;
+});
 
 const filteredClaims = computed(() => {
   const q = search.value.trim().toLowerCase();
 
-  return claims.filter((claim) => {
-    const matchesSearch = !q || `${claim.id} ${claim.policyholder}`.toLowerCase().includes(q);
-    const matchesStatus = statusFilter.value === 'all' || claim.status === statusFilter.value;
-    const matchesAgent = agentFilter.value === 'all' || claim.agent === agentFilter.value;
+  return claims.value.filter((claim) => {
+    const matchesSearch = !q || `${claim.claimNumber} ${claim.claimType} user ${claim.userId}`.toLowerCase().includes(q);
+    const matchesStatus = statusFilter.value === 'all' || String(claim.status || '').toLowerCase() === statusFilter.value;
+    const agentLabel = claim.agentId ? `Agent #${claim.agentId}` : '-';
+    const matchesAgent = agentFilter.value === 'all' || agentLabel === agentFilter.value;
     return matchesSearch && matchesStatus && matchesAgent;
   });
+});
+
+onMounted(async () => {
+  try {
+    const { data } = await getClaims();
+    claims.value = data || [];
+  } catch {
+    claims.value = [];
+  }
 });
 </script>

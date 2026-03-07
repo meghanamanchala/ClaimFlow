@@ -1113,6 +1113,12 @@ body {
   margin-bottom: 1rem;
 }
 
+.upload-controls {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
 .toolbar-row .search-input {
   width: 100%;
 }

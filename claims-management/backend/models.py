@@ -67,3 +67,43 @@ class Claim(Base):
     agent = relationship("User", back_populates="assigned_claims", foreign_keys=[agent_id])
     reviewer = relationship("User", back_populates="reviewed_claims", foreign_keys=[reviewed_by])
     policy = relationship("Policy", back_populates="claims")
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(Integer, primary_key=True)
+    claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    receiver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    content = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class PermissionSetting(Base):
+    __tablename__ = "permission_settings"
+
+    id = Column(Integer, primary_key=True)
+    role = Column(String, unique=True, nullable=False)
+    permissions = Column(JSON, default=list, nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+
+    id = Column(Integer, primary_key=True)
+    general = Column(JSON, default=dict, nullable=False)
+    notifications = Column(JSON, default=dict, nullable=False)
+    claim_processing = Column(JSON, default=dict, nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )

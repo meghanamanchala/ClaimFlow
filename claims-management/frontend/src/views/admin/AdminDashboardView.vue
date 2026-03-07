@@ -8,23 +8,23 @@
     <section class="stat-grid">
       <article class="stat-card">
         <p class="stat-title">Total Claims</p>
-        <p class="stat-value">156</p>
-        <p class="stat-note positive">+12% this month</p>
+        <p class="stat-value">{{ stats.totalClaims }}</p>
+        <p class="stat-note positive">Live from backend</p>
       </article>
       <article class="stat-card">
         <p class="stat-title">Active Users</p>
-        <p class="stat-value">342</p>
-        <p class="stat-note positive">+8%</p>
+        <p class="stat-value">{{ stats.activeUsers }}</p>
+        <p class="stat-note positive">Non-inactive accounts</p>
       </article>
       <article class="stat-card">
         <p class="stat-title">Agents Online</p>
-        <p class="stat-value">8</p>
-        <p class="stat-note">of 12 total</p>
+        <p class="stat-value">{{ stats.agentsOnline }}</p>
+        <p class="stat-note">of {{ stats.totalAgents }} agents</p>
       </article>
       <article class="stat-card">
         <p class="stat-title">Avg Processing</p>
-        <p class="stat-value">2.4 days</p>
-        <p class="stat-note positive">-0.3 days</p>
+        <p class="stat-value">{{ stats.avgProcessing }}</p>
+        <p class="stat-note">From claim timeline</p>
       </article>
     </section>
 
@@ -47,13 +47,13 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="claim in claims" :key="claim.id">
-              <td><a href="#" @click.prevent>{{ claim.id }}</a></td>
-              <td>{{ claim.policyholder }}</td>
-              <td>{{ claim.agent }}</td>
-              <td>{{ claim.type }}</td>
-              <td>{{ claim.amount }}</td>
-              <td><span class="badge" :class="claim.statusClass">{{ claim.status }}</span></td>
+            <tr v-for="claim in previewClaims" :key="claim.id">
+              <td><a href="#" @click.prevent>{{ claim.claimNumber }}</a></td>
+              <td>User #{{ claim.userId }}</td>
+              <td>{{ claim.agentId ? `Agent #${claim.agentId}` : '-' }}</td>
+              <td>{{ claim.claimType }}</td>
+              <td>{{ formatCurrency(claim.estimatedAmount) }}</td>
+              <td><span class="badge" :class="getStatusClass(claim.status)">{{ getStatusLabel(claim.status) }}</span></td>
             </tr>
           </tbody>
         </table>
@@ -77,18 +77,82 @@
 </template>
 
 <script setup>
-const claims = [
-  { id: 'CLM-2024-001', policyholder: 'Sarah Mitchell', agent: 'James Carter', type: 'Auto', amount: '$4,500', status: 'Under Review', statusClass: 'badge-review' },
-  { id: 'CLM-2024-002', policyholder: 'Sarah Mitchell', agent: 'James Carter', type: 'Health', amount: '$1,200', status: 'Approved', statusClass: 'badge-approved' },
-  { id: 'CLM-2024-004', policyholder: 'John Davis', agent: 'James Carter', type: 'Health', amount: '$2,800', status: 'Pending', statusClass: 'badge-pending' },
-  { id: 'CLM-2024-005', policyholder: 'Emily Brown', agent: 'Lisa Anderson', type: 'Property', amount: '$18,500', status: 'Under Review', statusClass: 'badge-review' },
-  { id: 'CLM-2024-007', policyholder: 'Tom Harris', agent: 'Lisa Anderson', type: 'Life', amount: '$50,000', status: 'Rejected', statusClass: 'badge-rejected' }
-];
+import { computed, onMounted, ref } from 'vue';
+import { getClaims, getUsers } from '../../services/api';
+import { formatCurrency, getStatusClass, getStatusLabel } from '../../services/claimTransforms';
 
-const distribution = [
-  { label: 'Pending', percent: 25, color: '#f59e0b' },
-  { label: 'Under Review', percent: 40, color: '#0ea5e9' },
-  { label: 'Approved', percent: 65, color: '#22c55e' },
-  { label: 'Rejected', percent: 15, color: '#ef4444' }
-];
+const claims = ref([]);
+const users = ref([]);
+
+const previewClaims = computed(() => {
+  return [...claims.value]
+    .sort((a, b) => new Date(b.createdAt || b.incidentDate) - new Date(a.createdAt || a.incidentDate))
+    .slice(0, 6);
+});
+
+const stats = computed(() => {
+  const totalClaims = claims.value.length;
+  const activeUsers = users.value.filter((user) => String(user.status || '').toLowerCase() !== 'inactive').length;
+  const totalAgents = users.value.filter((user) => String(user.role || '').toLowerCase() === 'agent').length;
+  const agentsOnline = users.value.filter((user) => String(user.role || '').toLowerCase() === 'agent' && user.isOnline).length;
+
+  const completed = claims.value.filter((claim) => claim.timeline?.length > 1);
+  const avgDays = completed.length
+    ? completed.reduce((sum, claim) => {
+        const first = new Date(claim.timeline[0]?.date);
+        const last = new Date(claim.timeline[claim.timeline.length - 1]?.date);
+        const days = Math.max(0, (last - first) / (1000 * 60 * 60 * 24));
+        return sum + days;
+      }, 0) / completed.length
+    : 0;
+
+  return {
+    totalClaims,
+    activeUsers,
+    totalAgents,
+    agentsOnline,
+    avgProcessing: `${avgDays.toFixed(1)} days`
+  };
+});
+
+const distribution = computed(() => {
+  const colorMap = {
+    Pending: '#f59e0b',
+    'Under Review': '#0ea5e9',
+    Approved: '#22c55e',
+    Rejected: '#ef4444'
+  };
+
+  const total = claims.value.length || 1;
+  const groups = {
+    Pending: 0,
+    'Under Review': 0,
+    Approved: 0,
+    Rejected: 0
+  };
+
+  claims.value.forEach((claim) => {
+    const status = getStatusLabel(claim.status);
+    if (groups[status] !== undefined) {
+      groups[status] += 1;
+    }
+  });
+
+  return Object.entries(groups).map(([label, count]) => ({
+    label,
+    percent: Math.round((count / total) * 100),
+    color: colorMap[label]
+  }));
+});
+
+onMounted(async () => {
+  try {
+    const [claimsResponse, usersResponse] = await Promise.all([getClaims(), getUsers()]);
+    claims.value = claimsResponse.data || [];
+    users.value = usersResponse.data || [];
+  } catch {
+    claims.value = [];
+    users.value = [];
+  }
+});
 </script>

@@ -18,17 +18,22 @@
           <span>Claim Type</span>
           <select v-model="form.claimType">
             <option disabled value="">Select claim type</option>
-            <option>Auto Insurance</option>
-            <option>Health Insurance</option>
-            <option>Property Insurance</option>
-            <option>Travel Insurance</option>
+            <option value="Auto">Auto</option>
+            <option value="Health">Health</option>
+            <option value="Property">Property</option>
           </select>
         </label>
 
         <label class="field">
           <span>Policy Number</span>
-          <input v-model="form.policyNumber" type="text" placeholder="POL-XXXX-XXXX" />
+          <select v-model="form.policyNumber" :disabled="policiesLoading">
+            <option disabled value="">Select policy</option>
+            <option v-for="policy in policies" :key="policy.id" :value="policy.policy_number">
+              {{ policy.policy_number }}
+            </option>
+          </select>
         </label>
+        <p v-if="policiesLoading" class="form-message">Loading policies...</p>
       </div>
 
       <div v-if="currentStep === 2" class="wizard-body">
@@ -102,19 +107,26 @@
         >
           Next
         </button>
-        <button v-else type="button" class="primary-btn" @click="submitClaim">Submit Claim</button>
+        <button v-else type="button" class="primary-btn" @click="submitClaim" :disabled="submitting">
+          {{ submitting ? 'Submitting...' : 'Submit Claim' }}
+        </button>
       </div>
 
       <p v-if="message" class="form-message success">{{ message }}</p>
+      <p v-if="errorMessage" class="message error">{{ errorMessage }}</p>
     </section>
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { createClaim, getPolicies } from '../../services/api';
 
 const currentStep = ref(1);
 const message = ref('');
+const errorMessage = ref('');
+const submitting = ref(false);
+const policiesLoading = ref(true);
 
 const form = ref({
   claimType: '',
@@ -124,6 +136,7 @@ const form = ref({
   description: ''
 });
 
+const policies = ref([]);
 const documents = ref([]);
 
 const steps = [
@@ -183,16 +196,53 @@ function goBack() {
   }
 }
 
-function submitClaim() {
-  message.value = 'Claim submitted successfully.';
-  currentStep.value = 1;
-  form.value = {
-    claimType: '',
-    policyNumber: '',
-    incidentDate: '',
-    amount: 0,
-    description: ''
-  };
-  documents.value = [];
+async function submitClaim() {
+  submitting.value = true;
+  errorMessage.value = '';
+  message.value = '';
+
+  try {
+    await createClaim({
+      claimType: form.value.claimType,
+      policyNumber: form.value.policyNumber,
+      incidentDate: form.value.incidentDate,
+      estimatedAmount: Number(form.value.amount),
+      description: form.value.description,
+      documents: documents.value.map((file) => ({
+        fileName: file.name,
+        fileUrl: file.name,
+        fileType: (file.name.split('.').pop() || 'file').toUpperCase(),
+        size: Number((file.size / 1024 / 1024).toFixed(3))
+      }))
+    });
+
+    message.value = 'Claim submitted successfully.';
+    currentStep.value = 1;
+    form.value = {
+      claimType: '',
+      policyNumber: '',
+      incidentDate: '',
+      amount: 0,
+      description: ''
+    };
+    documents.value = [];
+  } catch (error) {
+    errorMessage.value = error.response?.data?.detail || 'Failed to submit claim.';
+  } finally {
+    submitting.value = false;
+  }
 }
+
+onMounted(async () => {
+  policiesLoading.value = true;
+
+  try {
+    const { data } = await getPolicies();
+    policies.value = data || [];
+  } catch (error) {
+    errorMessage.value = error.response?.data?.detail || 'Unable to load policies.';
+  } finally {
+    policiesLoading.value = false;
+  }
+});
 </script>
