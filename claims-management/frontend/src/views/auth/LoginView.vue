@@ -1,28 +1,25 @@
 <template>
   <AuthLayout>
-    <form class="auth-form" @submit.prevent="submitRegister">
-      <h2>Create an account</h2>
-      <p class="subtext">Join ClaimFlow to manage your insurance claims with ease.</p>
-
-      <label class="field">
-        <span>Full Name</span>
-        <input v-model="form.name" type="text" autocomplete="name" required placeholder="John Doe" />
-      </label>
+    <form class="auth-form" @submit.prevent="submitLogin">
+      <h2>Welcome back</h2>
+      <p class="subtext">Sign in to your account to continue</p>
 
       <label class="field">
         <span>Email</span>
-        <input v-model="form.email" type="email" autocomplete="email" required placeholder="you@example.com" />
+        <input v-model="form.email" type="email" autocomplete="username" required placeholder="you@example.com" />
       </label>
 
       <label class="field">
-        <span>Password</span>
+        <div class="field-head">
+          <span>Password</span>
+          <a href="#" @click.prevent>Forgot password?</a>
+        </div>
         <input
           v-model="form.password"
           type="password"
-          autocomplete="new-password"
-          minlength="6"
+          autocomplete="current-password"
           required
-          placeholder="Create password"
+          placeholder="Enter password"
         />
       </label>
 
@@ -37,15 +34,15 @@
       </fieldset>
 
       <button class="submit-btn" type="submit" :disabled="loading">
-        {{ loading ? 'Creating Account...' : 'Create Account' }}
+        {{ loading ? 'Signing In...' : 'Sign In' }}
       </button>
 
       <p v-if="errorMessage" class="message error">{{ errorMessage }}</p>
       <p v-if="successMessage" class="message success">{{ successMessage }}</p>
 
       <p class="switch-link">
-        Already have an account?
-        <RouterLink to="/login">Sign In</RouterLink>
+        Don't have an account?
+        <RouterLink to="/register">Register here</RouterLink>
       </p>
     </form>
   </AuthLayout>
@@ -54,8 +51,8 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
-import AuthLayout from './AuthLayout.vue';
-import { registerUser } from '../services/api';
+import AuthLayout from '../../layouts/AuthLayout.vue';
+import { loginUser } from '../../services/api';
 
 const router = useRouter();
 
@@ -66,7 +63,6 @@ const roles = [
 ];
 
 const form = reactive({
-  name: '',
   email: '',
   password: '',
   role: 'policyholder'
@@ -76,25 +72,29 @@ const loading = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
 
-async function submitRegister() {
+async function submitLogin() {
   loading.value = true;
   errorMessage.value = '';
   successMessage.value = '';
 
   try {
-    await registerUser({
-      name: form.name,
-      email: form.email,
-      password: form.password,
-      role: form.role
-    });
+    const { data } = await loginUser(form.email, form.password);
+    localStorage.setItem('claimflow_token', data.access_token);
+    localStorage.setItem('claimflow_role', form.role);
 
-    successMessage.value = 'Registration successful. Redirecting to login...';
-    setTimeout(() => {
-      router.push('/login');
-    }, 900);
+    if (form.role === 'agent') {
+      router.push('/agent/dashboard');
+      return;
+    }
+
+    if (form.role === 'admin') {
+      router.push('/admin/dashboard');
+      return;
+    }
+
+    router.push('/dashboard');
   } catch (error) {
-    errorMessage.value = error.response?.data?.detail || 'Registration failed. Please try again.';
+    errorMessage.value = error.response?.data?.detail || 'Login failed. Please try again.';
   } finally {
     loading.value = false;
   }
