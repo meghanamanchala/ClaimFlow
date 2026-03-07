@@ -6,17 +6,24 @@
 
       <label class="field">
         <span>Full Name</span>
-        <input v-model="form.name" type="text" required placeholder="John Doe" />
+        <input v-model="form.name" type="text" autocomplete="name" required placeholder="John Doe" />
       </label>
 
       <label class="field">
         <span>Email</span>
-        <input v-model="form.email" type="email" required placeholder="you@example.com" />
+        <input v-model="form.email" type="email" autocomplete="email" required placeholder="you@example.com" />
       </label>
 
       <label class="field">
         <span>Password</span>
-        <input v-model="form.password" type="password" minlength="6" required placeholder="Create password" />
+        <input
+          v-model="form.password"
+          type="password"
+          autocomplete="new-password"
+          minlength="6"
+          required
+          placeholder="Create password"
+        />
       </label>
 
       <fieldset class="role-group">

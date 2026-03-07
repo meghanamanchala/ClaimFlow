@@ -31,6 +31,7 @@
           </button>
           <div class="topbar-avatar">AU</div>
           <span class="topbar-name">Admin User</span>
+          <button type="button" class="topbar-logout" @click="logout">Logout</button>
         </div>
       </header>
 
@@ -40,3 +41,15 @@
     </div>
   </div>
 </template>
+
+<script setup>
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
+function logout() {
+  localStorage.removeItem('claimflow_token');
+  localStorage.removeItem('claimflow_role');
+  router.replace('/login');
+}
+</script>

@@ -6,7 +6,7 @@
 
       <label class="field">
         <span>Email</span>
-        <input v-model="form.email" type="email" required placeholder="you@example.com" />
+        <input v-model="form.email" type="email" autocomplete="username" required placeholder="you@example.com" />
       </label>
 
       <label class="field">
@@ -14,7 +14,13 @@
           <span>Password</span>
           <a href="#" @click.prevent>Forgot password?</a>
         </div>
-        <input v-model="form.password" type="password" required placeholder="Enter password" />
+        <input
+          v-model="form.password"
+          type="password"
+          autocomplete="current-password"
+          required
+          placeholder="Enter password"
+        />
       </label>
 
       <fieldset class="role-group">
@@ -44,9 +50,11 @@
 
 <script setup>
 import { reactive, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 import AuthLayout from './AuthLayout.vue';
 import { loginUser } from '../services/api';
+
+const router = useRouter();
 
 const roles = [
   { label: 'Policyholder', value: 'policyholder' },
@@ -73,7 +81,18 @@ async function submitLogin() {
     const { data } = await loginUser(form.email, form.password);
     localStorage.setItem('claimflow_token', data.access_token);
     localStorage.setItem('claimflow_role', form.role);
-    successMessage.value = 'Login successful. Token saved to localStorage.';
+
+    if (form.role === 'agent') {
+      router.push('/agent/dashboard');
+      return;
+    }
+
+    if (form.role === 'admin') {
+      router.push('/admin/dashboard');
+      return;
+    }
+
+    router.push('/dashboard');
   } catch (error) {
     errorMessage.value = error.response?.data?.detail || 'Login failed. Please try again.';
   } finally {
