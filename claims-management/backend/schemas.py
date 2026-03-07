@@ -1,5 +1,6 @@
 from enum import Enum
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -124,6 +125,89 @@ class ClaimTrackingResponse(BaseModel):
     claim_number: str | None = Field(default=None, alias="claimNumber")
     status: str
     timeline: list[ClaimTimelineItem] = Field(default_factory=list)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ClaimDecisionUpdate(BaseModel):
+    decision: Literal["approved", "rejected", "under_review"]
+    agent_notes: str | None = Field(default=None, alias="agentNotes")
+    approved_amount: float | None = Field(default=None, alias="approvedAmount")
+    rejection_reason: str | None = Field(default=None, alias="rejectionReason")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class MessageCreate(BaseModel):
+    claim_id: int = Field(alias="claimId")
+    receiver_id: int | None = Field(default=None, alias="receiverId")
+    content: str
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class MessageResponse(BaseModel):
+    id: int
+    claim_id: int = Field(alias="claimId")
+    sender_id: int = Field(alias="senderId")
+    receiver_id: int | None = Field(default=None, alias="receiverId")
+    content: str
+    sender_name: str | None = Field(default=None, alias="senderName")
+    created_at: datetime = Field(alias="createdAt")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class PermissionItem(BaseModel):
+    name: str
+    enabled: bool
+
+
+class PermissionRoleConfig(BaseModel):
+    role: str
+    items: list[PermissionItem]
+
+
+class PermissionConfigUpdate(BaseModel):
+    roles: list[PermissionRoleConfig]
+
+
+class GeneralSettings(BaseModel):
+    company_name: str = Field(alias="companyName")
+    support_email: str = Field(alias="supportEmail")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class NotificationSettings(BaseModel):
+    email_notifications_for_new_claims: bool = Field(alias="emailNotificationsForNewClaims")
+    sms_alerts_for_status_updates: bool = Field(alias="smsAlertsForStatusUpdates")
+    daily_summary_reports: bool = Field(alias="dailySummaryReports")
+    agent_assignment_notifications: bool = Field(alias="agentAssignmentNotifications")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ClaimProcessingSettings(BaseModel):
+    auto_assign_threshold: float = Field(alias="autoAssignThreshold")
+    review_deadline_days: int = Field(alias="reviewDeadlineDays")
+    auto_assignment: bool = Field(alias="autoAssignment")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AdminSettingsResponse(BaseModel):
+    general: GeneralSettings
+    notifications: NotificationSettings
+    claim_processing: ClaimProcessingSettings = Field(alias="claimProcessing")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AdminSettingsUpdate(BaseModel):
+    general: GeneralSettings
+    notifications: NotificationSettings
+    claim_processing: ClaimProcessingSettings = Field(alias="claimProcessing")
 
     model_config = ConfigDict(populate_by_name=True)
 

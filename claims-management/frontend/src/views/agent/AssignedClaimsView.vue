@@ -9,13 +9,18 @@
       <input v-model="query" class="search-input" type="text" placeholder="Search by claim ID or policyholder..." />
       <select v-model="statusFilter" class="filter-select">
         <option value="all">All Status</option>
-        <option value="Under Review">Under Review</option>
-        <option value="Pending">Pending</option>
+        <option value="under_review">Under Review</option>
+        <option value="submitted">Pending</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
       </select>
     </div>
 
     <article class="panel">
-      <table class="data-table">
+      <p v-if="loading" class="empty-state">Loading claims...</p>
+      <p v-else-if="errorMessage" class="message error">{{ errorMessage }}</p>
+
+      <table v-else class="data-table">
         <thead>
           <tr>
             <th>Claim ID</th>
@@ -30,95 +35,57 @@
         </thead>
         <tbody>
           <tr v-for="claim in filteredClaims" :key="claim.id">
-            <td><a href="#" @click.prevent>{{ claim.id }}</a></td>
-            <td>{{ claim.policyholder }}</td>
-            <td>{{ claim.type }}</td>
-            <td>{{ claim.date }}</td>
-            <td>{{ claim.amount }}</td>
-            <td><span class="badge" :class="claim.priorityClass">{{ claim.priority }}</span></td>
-            <td><span class="badge" :class="claim.statusClass">{{ claim.status }}</span></td>
+            <td><a href="#" @click.prevent>{{ claim.claimNumber }}</a></td>
+            <td>User #{{ claim.userId }}</td>
+            <td>{{ claim.claimType }}</td>
+            <td>{{ formatDate(claim.incidentDate) }}</td>
+            <td>{{ formatCurrency(claim.estimatedAmount) }}</td>
+            <td><span class="badge" :class="getPriorityClass(claim.priority)">{{ claim.priority }}</span></td>
+            <td><span class="badge" :class="getStatusClass(claim.status)">{{ getStatusLabel(claim.status) }}</span></td>
             <td>
-              <RouterLink class="link-btn" to="/agent/review-claims">Review</RouterLink>
+              <RouterLink :to="{ path: '/agent/review-claims', query: { claimId: claim.id } }" class="link-btn">Review</RouterLink>
             </td>
           </tr>
         </tbody>
       </table>
-      <p v-if="!filteredClaims.length" class="empty-state">No claims match your filters.</p>
+
+      <p v-if="!loading && !errorMessage && !filteredClaims.length" class="empty-state">No claims match your filters.</p>
     </article>
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { getClaims } from '../../services/api';
+import { formatCurrency, formatDate, getPriorityClass, getStatusClass, getStatusLabel } from '../../services/claimTransforms';
 
 const query = ref('');
 const statusFilter = ref('all');
-
-const claims = [
-  {
-    id: 'CLM-2024-001',
-    policyholder: 'Sarah Mitchell',
-    type: 'Auto',
-    date: 'Mar 2, 2026',
-    amount: '$4,500',
-    priority: 'High',
-    priorityClass: 'badge-priority-high',
-    status: 'Under Review',
-    statusClass: 'badge-review'
-  },
-  {
-    id: 'CLM-2024-004',
-    policyholder: 'John Davis',
-    type: 'Health',
-    date: 'Mar 4, 2026',
-    amount: '$2,800',
-    priority: 'Medium',
-    priorityClass: 'badge-priority-medium',
-    status: 'Pending',
-    statusClass: 'badge-pending'
-  },
-  {
-    id: 'CLM-2024-005',
-    policyholder: 'Emily Brown',
-    type: 'Property',
-    date: 'Mar 1, 2026',
-    amount: '$18,500',
-    priority: 'High',
-    priorityClass: 'badge-priority-high',
-    status: 'Under Review',
-    statusClass: 'badge-review'
-  },
-  {
-    id: 'CLM-2024-006',
-    policyholder: 'Mike Wilson',
-    type: 'Auto',
-    date: 'Feb 28, 2026',
-    amount: '$3,200',
-    priority: 'Low',
-    priorityClass: 'badge-priority-low',
-    status: 'Pending',
-    statusClass: 'badge-pending'
-  },
-  {
-    id: 'CLM-2024-009',
-    policyholder: 'Anna Lee',
-    type: 'Health',
-    date: 'Mar 5, 2026',
-    amount: '$1,900',
-    priority: 'Medium',
-    priorityClass: 'badge-priority-medium',
-    status: 'Pending',
-    statusClass: 'badge-pending'
-  }
-];
+const claims = ref([]);
+const loading = ref(true);
+const errorMessage = ref('');
 
 const filteredClaims = computed(() => {
   const q = query.value.trim().toLowerCase();
 
-  return claims.filter((claim) => {
-    const matchesQuery = !q || `${claim.id} ${claim.policyholder}`.toLowerCase().includes(q);
-    const matchesStatus = statusFilter.value === 'all' || claim.status === statusFilter.value;
+  return claims.value.filter((claim) => {
+    const matchesQuery = !q || `${claim.claimNumber} user ${claim.userId}`.toLowerCase().includes(q);
+    const matchesStatus = statusFilter.value === 'all' || String(claim.status || '').toLowerCase() === statusFilter.value;
     return matchesQuery && matchesStatus;
   });
+});
+
+onMounted(async () => {
+  loading.value = true;
+  errorMessage.value = '';
+
+  try {
+    const { data } = await getClaims();
+    claims.value = data || [];
+  } catch (error) {
+    errorMessage.value = error.response?.data?.detail || 'Unable to load claims.';
+  } finally {
+    loading.value = false;
+  }
 });
 </script>

@@ -13,36 +13,33 @@
           v-for="chat in filteredChats"
           :key="chat.id"
           class="chat-item"
-          :class="{ active: chat.id === selectedChat.id }"
+          :class="{ active: chat.id === selectedChat?.id }"
           type="button"
           @click="selectedChat = chat"
         >
           <div class="avatar-soft">{{ chat.initials }}</div>
           <div class="chat-meta">
             <p>{{ chat.name }}</p>
-            <small>{{ chat.claimId }}</small>
+            <small>{{ chat.claimNumber }}</small>
           </div>
         </button>
       </aside>
 
       <article class="chat-window">
-        <header class="chat-window-head">
+        <header class="chat-window-head" v-if="selectedChat">
           <h2>{{ selectedChat.name }}</h2>
-          <p>{{ selectedChat.claimId }}</p>
+          <p>{{ selectedChat.claimNumber }}</p>
         </header>
 
-        <div class="chat-bubbles">
-          <div
-            v-for="message in selectedChat.messages"
-            :key="message.id"
-            class="chat-bubble"
-            :class="message.from"
-          >
+        <div class="chat-bubbles" v-if="selectedChat">
+          <div v-for="message in selectedChat.messages" :key="message.id" class="chat-bubble" :class="message.from">
             {{ message.text }}
           </div>
         </div>
 
-        <form class="chat-input-row" @submit.prevent="sendMessage">
+        <p v-if="!selectedChat" class="empty-state">No conversations available.</p>
+
+        <form class="chat-input-row" @submit.prevent="sendMessage" v-if="selectedChat">
           <input v-model="draft" type="text" placeholder="Type a message..." />
           <button type="submit" class="primary-btn">Send</button>
         </form>
@@ -52,35 +49,14 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { createMessage, getClaims, getMessages } from '../../services/api';
+import { formatDate, getStatusLabel } from '../../services/claimTransforms';
 
 const query = ref('');
 const draft = ref('');
-
-const chats = ref([
-  {
-    id: 1,
-    name: 'Sarah Mitchell',
-    initials: 'SM',
-    claimId: 'CLM-2024-001',
-    messages: [
-      { id: 1, from: 'in', text: 'Hi, has my claim review started?' },
-      { id: 2, from: 'out', text: 'Yes, I am currently reviewing your documents.' }
-    ]
-  },
-  {
-    id: 2,
-    name: 'John Davis',
-    initials: 'JD',
-    claimId: 'CLM-2024-004',
-    messages: [
-      { id: 1, from: 'in', text: 'Uploaded additional medical bill.' },
-      { id: 2, from: 'out', text: 'Received, thank you. I will validate it today.' }
-    ]
-  }
-]);
-
-const selectedChat = ref(chats.value[0]);
+const chats = ref([]);
+const selectedChat = ref(null);
 
 const filteredChats = computed(() => {
   const q = query.value.trim().toLowerCase();
@@ -89,21 +65,83 @@ const filteredChats = computed(() => {
     return chats.value;
   }
 
-  return chats.value.filter((chat) => `${chat.name} ${chat.claimId}`.toLowerCase().includes(q));
+  return chats.value.filter((chat) => `${chat.name} ${chat.claimNumber}`.toLowerCase().includes(q));
 });
 
-function sendMessage() {
+async function sendMessage() {
   const text = draft.value.trim();
 
-  if (!text) {
+  if (!text || !selectedChat.value) {
     return;
   }
 
-  selectedChat.value.messages.push({
-    id: Date.now(),
-    from: 'out',
-    text
-  });
-  draft.value = '';
+  try {
+    await createMessage({
+      claimId: selectedChat.value.id,
+      content: text
+    });
+
+    const { data } = await getMessages({ claimId: selectedChat.value.id });
+    selectedChat.value.messages = (data || []).map((message) => ({
+      id: message.id,
+      from: 'out',
+      text: `${message.senderName || 'User'}: ${message.content}`
+    }));
+    draft.value = '';
+  } catch {
+    selectedChat.value.messages.push({
+      id: Date.now(),
+      from: 'out',
+      text
+    });
+    draft.value = '';
+  }
 }
+
+onMounted(async () => {
+  try {
+    const { data } = await getClaims();
+    const claimList = data || [];
+    chats.value = await Promise.all(claimList.map(async (claim) => {
+      const timelineMessages = (claim.timeline || []).map((item, index) => ({
+        id: `${claim.id}-${index}`,
+        from: 'in',
+        text: `${item.step} on ${formatDate(item.date)}.`
+      }));
+
+      let persistedMessages = [];
+      try {
+        const response = await getMessages({ claimId: claim.id });
+        persistedMessages = (response.data || []).map((message) => ({
+          id: message.id,
+          from: 'in',
+          text: `${message.senderName || 'User'}: ${message.content}`
+        }));
+      } catch {
+        persistedMessages = [];
+      }
+
+      return {
+        id: claim.id,
+        name: `User #${claim.userId}`,
+        initials: 'U',
+        claimNumber: claim.claimNumber,
+        messages: [
+          {
+            id: `${claim.id}-status`,
+            from: 'in',
+            text: `Current status: ${getStatusLabel(claim.status)}.`
+          },
+          ...persistedMessages,
+          ...timelineMessages
+        ]
+      };
+    }));
+
+    selectedChat.value = chats.value[0] || null;
+  } catch {
+    chats.value = [];
+    selectedChat.value = null;
+  }
+});
 </script>
