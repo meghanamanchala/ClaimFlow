@@ -136,10 +136,19 @@ claimflow/
 | Field | Type |
 |-------|------|
 | id | Integer (Primary Key) |
+| claim_number | String (Unique) |
+| user_id | Foreign Key (Users) |
 | policy_id | Foreign Key (Policies) |
-| claim_amount | Float |
+| claim_type | String (Auto/Health/Property) |
+| policy_number | String |
+| incident_date | Date |
+| estimated_amount | Float |
+| approved_amount | Float (Nullable) |
+| approved_at | Timestamp (Nullable) |
+| documents | JSON Array |
+| timeline | JSON Array |
 | description | Text |
-| status | Enum |
+| status | String |
 | created_at | Timestamp |
 
 ---
@@ -160,7 +169,30 @@ claimflow/
 ### Claims
 - POST /claims (Policyholder Only)
 - GET /claims   (Policyholder: Own Claims, Agent/Admin: All Claims)
+- POST /claims/{id}/documents (Policyholder Owner / Agent / Admin)
 - PATCH /claims/{id}/status (Agent/Admin Only)
+- GET /claims/{id}/tracking (Owner / Agent / Admin)
+
+Claim create payload example:
+
+```json
+{
+        "claimType": "Auto",
+        "policyNumber": "POL-1234-0001",
+        "incidentDate": "2026-03-02",
+        "estimatedAmount": 4500,
+        "description": "Front bumper damage",
+        "documents": [
+                {
+                        "fileName": "police-report.pdf",
+                        "fileUrl": "https://storage.example/police-report.pdf",
+                        "fileType": "PDF",
+                        "size": 2.4,
+                        "uploadedAt": "2026-03-02T10:30:00Z"
+                }
+        ]
+}
+```
 
 ---
 
