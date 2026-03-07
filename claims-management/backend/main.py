@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import List
 
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from claims import router as claims_router
@@ -22,6 +23,17 @@ from jwt_handler import create_access_token
 from dependencies import get_current_user, require_roles
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 app.include_router(claims_router)

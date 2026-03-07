@@ -1,0 +1,13 @@
+{
+  "name": "claimflow-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev:backend": "cd claims-management\\backend && venv\\Scripts\\python -m uvicorn main:app --reload",
+    "dev:frontend": "cd claims-management\\frontend && npm run dev",
+    "dev:full": "concurrently -k -n BACKEND,FRONTEND -c green,blue \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
