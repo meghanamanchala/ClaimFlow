@@ -71,17 +71,22 @@ claimflow/
 │
 ├── Readme.md
 └── claims-management/
-        ├── main.py
-        ├── database.py
-        ├── models.py
-        ├── schemas.py
-        ├── auth.py
-        ├── dependencies.py
-        ├── claims.py
-        ├── jwt_handler.py
-        ├── requirements.txt
-        ├── tests/
-        └── .env
+        ├── backend/
+        │   ├── main.py
+        │   ├── database.py
+        │   ├── models.py
+        │   ├── schemas.py
+        │   ├── auth.py
+        │   ├── dependencies.py
+        │   ├── claims.py
+        │   ├── jwt_handler.py
+        │   ├── requirements.txt
+        │   ├── tests/
+        │   └── .env
+        └── frontend/
+            ├── src/
+            ├── package.json
+            └── vite.config.js
 ```
 
 ---
@@ -203,7 +208,7 @@ Claim create payload example:
 ```bash
 git clone https://github.com/your-username/claimflow.git  
 cd claimflow
-cd claims-management
+cd claims-management/backend
 ```
 
 ### 2. Create Virtual Environment
@@ -244,6 +249,42 @@ uvicorn main:app --reload
 Access API documentation at:  
 http://127.0.0.1:8000/docs  
 
+### 6. Run Vue Frontend (Login/Register UI)
+
+From the project root:
+
+```bash
+cd claims-management/frontend
+copy .env.example .env
+npm install
+npm run dev
+```
+
+Open: `http://localhost:5173`
+
+Frontend auth pages:
+- `http://localhost:5173/login`
+- `http://localhost:5173/register`
+
+Notes:
+- Backend must be running on `http://127.0.0.1:8000`.
+- Login endpoint uses form data (`username`, `password`) by design.
+- Register endpoint uses JSON (`name`, `email`, `password`, `role`).
+- CORS is enabled in `claims-management/backend/main.py` for localhost Vite origin.
+
+### 7. Run Backend + Frontend Together (Single Command)
+
+From repository root:
+
+```bash
+npm install
+npm run dev:full
+```
+
+This starts:
+- FastAPI from `claims-management/backend`
+- Vue dev server from `claims-management/frontend`
+
 ---
 
 ## Docker Setup
@@ -251,6 +292,7 @@ http://127.0.0.1:8000/docs
 ### Build Image
 
 ```bash
+cd claims-management/backend
 docker build -t claimflow .
 ```
 
@@ -263,6 +305,7 @@ docker compose up --build```
 ### Run With Docker Compose
 
 ```bash
+cd claims-management/backend
 docker compose up --build
 ```
 
@@ -277,6 +320,7 @@ docker compose down
 ## Running Tests
 
 ```bash
+cd claims-management/backend
 pytest
 ```
 
