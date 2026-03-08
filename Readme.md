@@ -336,3 +336,5 @@ pytest
 - CI/CD integration
 - Deployment on AWS or Render
 - Frontend application (Vue)
+
+
