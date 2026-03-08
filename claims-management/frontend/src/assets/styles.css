@@ -520,6 +520,17 @@ body {
   color: #1b2f4b;
 }
 
+.topbar-name-link {
+  text-decoration: none;
+  border-radius: 6px;
+  padding: 0.2rem 0.35rem;
+}
+
+.topbar-name-link:hover {
+  background: #f0f5ff;
+  color: #174289;
+}
+
 .topbar-logout {
   border: 1px solid #d7e0ef;
   background: #ffffff;
@@ -857,6 +868,24 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.profile-page {
+  max-width: 760px;
+}
+
+.profile-panel {
+  max-width: 620px;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.profile-actions {
+  margin-top: 0.45rem;
 }
 
 .primary-btn,

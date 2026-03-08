@@ -35,6 +35,10 @@ export async function getMe() {
   return api.get('/me');
 }
 
+export async function updateMe(payload) {
+  return api.put('/me', payload);
+}
+
 export async function getPolicies() {
   return api.get('/policies');
 }
