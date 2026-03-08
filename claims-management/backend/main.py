@@ -11,6 +11,8 @@ from database import engine, SessionLocal
 from models import Base, User, Claim, Policy, Message, PermissionSetting, SystemSetting
 from schemas import (
     UserCreate,
+    UserProfileResponse,
+    UserProfileUpdate,
     ClaimCreate,
     ClaimResponse,
     PolicyCreate,
@@ -37,6 +39,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -250,11 +253,45 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 
 # 🔹 Protected Route
-@app.get("/me")
+@app.get("/me", response_model=UserProfileResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     return {
+        "id": current_user.id,
+        "name": current_user.name,
         "email": current_user.email,
-        "role": current_user.role
+        "role": current_user.role,
+    }
+
+
+@app.put("/me", response_model=UserProfileResponse)
+def update_me(
+    payload: UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    db_user = db.query(User).filter(User.id == current_user.id).first()
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    new_name = payload.name.strip()
+    if len(new_name) < 2:
+        raise HTTPException(status_code=400, detail="Name must be at least 2 characters")
+
+    new_email = payload.email.strip().lower()
+    existing_user = db.query(User).filter(User.email == new_email, User.id != db_user.id).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already in use")
+
+    db_user.name = new_name
+    db_user.email = new_email
+    db.commit()
+    db.refresh(db_user)
+
+    return {
+        "id": db_user.id,
+        "name": db_user.name,
+        "email": db_user.email,
+        "role": db_user.role,
     }
 
 

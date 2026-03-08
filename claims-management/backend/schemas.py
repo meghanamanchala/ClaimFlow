@@ -49,6 +49,18 @@ class Token(BaseModel):
     token_type: str
 
 
+class UserProfileResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str
+
+
+class UserProfileUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    email: str
+
+
 class ClaimCreate(BaseModel):
     claim_type: ClaimTypeEnum = Field(alias="claimType")
     policy_number: str = Field(alias="policyNumber")

@@ -29,8 +29,8 @@
           <button type="button" class="topbar-bell" aria-label="Open notifications">
             <span class="notification-dot"></span>
           </button>
-          <div class="topbar-avatar">AU</div>
-          <span class="topbar-name">Admin User</span>
+          <div class="topbar-avatar">{{ avatarInitials }}</div>
+          <RouterLink to="/admin/profile" class="topbar-name topbar-name-link">{{ displayName }}</RouterLink>
           <button type="button" class="topbar-logout" @click="logout">Logout</button>
         </div>
       </header>
@@ -44,8 +44,10 @@
 
 <script setup>
 import { useRouter } from 'vue-router';
+import { useNavbarProfile } from '../composables/useNavbarProfile';
 
 const router = useRouter();
+const { displayName, avatarInitials } = useNavbarProfile();
 
 function logout() {
   localStorage.removeItem('claimflow_token');
