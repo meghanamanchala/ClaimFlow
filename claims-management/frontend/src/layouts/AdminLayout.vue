@@ -57,7 +57,13 @@
           </button>
           <div class="topbar-avatar">{{ avatarInitials }}</div>
           <RouterLink to="/admin/profile" class="topbar-name topbar-name-link">{{ displayName }}</RouterLink>
-          <button type="button" class="topbar-logout" @click="logout">Logout</button>
+          <button type="button" class="topbar-logout" @click="logout" aria-label="Logout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M10 17l5-5-5-5"></path>
+              <path d="M15 12H3"></path>
+              <path d="M21 3v18"></path>
+            </svg>
+          </button>
         </div>
       </header>
 
