@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import os
 import re
 import shutil
 from pathlib import Path
@@ -37,16 +38,23 @@ from dependencies import get_current_user, require_roles
 
 app = FastAPI()
 
+
+def parse_allowed_origins() -> list[str]:
+    raw = os.getenv("ALLOWED_ORIGINS", "")
+    if not raw.strip():
+        return [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ]
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
 UPLOADS_DIR = Path(__file__).with_name("uploads")
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    allow_origins=parse_allowed_origins(),
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

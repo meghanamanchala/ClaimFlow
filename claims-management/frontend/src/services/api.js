@@ -1,7 +1,22 @@
 import axios from 'axios';
 
+function resolveApiBaseUrl() {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://127.0.0.1:8000';
+    }
+  }
+
+  return 'https://claimflow-uhsl.onrender.com';
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+  baseURL: resolveApiBaseUrl()
 });
 
 api.interceptors.request.use((config) => {
