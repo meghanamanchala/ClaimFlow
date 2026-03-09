@@ -18,6 +18,7 @@ from schemas import (
     UserCreate,
     UserProfileResponse,
     UserProfileUpdate,
+    UserStatusUpdate,
     ClaimCreate,
     ClaimResponse,
     PolicyCreate,
@@ -242,15 +243,16 @@ def home():
 # 🔹 Register
 @app.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
+    normalized_email = user.email.strip().lower()
 
-    existing_user = db.query(User).filter(User.email == user.email).first()
+    existing_user = db.query(User).filter(User.email == normalized_email).first()
 
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     new_user = User(
         name=user.name,
-        email=user.email,
+        email=normalized_email,
         password=hash_password(user.password),
         role=user.role.value
     )
@@ -264,8 +266,9 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 # 🔹 Login
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    normalized_email = form_data.username.strip().lower()
 
-    user = db.query(User).filter(User.email == form_data.username).first()
+    user = db.query(User).filter(User.email == normalized_email).first()
 
     if not user or not verify_password(form_data.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -592,6 +595,36 @@ def get_users(
         }
         for user in users
     ]
+
+
+@app.patch("/admin/users/{user_id}/status")
+def update_user_status(
+    user_id: int,
+    payload: UserStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if current_user.id == user.id and payload.status != "active":
+        raise HTTPException(status_code=400, detail="Admin cannot deactivate their own account")
+
+    user.status = payload.status
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "role": user.role,
+        "status": user.status,
+        "lastLogin": user.last_login,
+        "isOnline": user.is_online,
+        "createdAt": user.created_at,
+    }
 
 
 @app.patch("/claims/{claim_id}/decision", response_model=ClaimResponse)

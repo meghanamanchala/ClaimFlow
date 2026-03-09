@@ -97,6 +97,10 @@ export async function getUsers() {
   return api.get('/users');
 }
 
+export async function updateUserStatus(userId, status) {
+  return api.patch(`/admin/users/${userId}/status`, { status });
+}
+
 export async function updateClaimDecision(claimId, payload) {
   return api.patch(`/claims/${claimId}/decision`, payload);
 }

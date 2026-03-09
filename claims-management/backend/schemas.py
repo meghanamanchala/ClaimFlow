@@ -61,6 +61,10 @@ class UserProfileUpdate(BaseModel):
     email: str
 
 
+class UserStatusUpdate(BaseModel):
+    status: Literal["active", "inactive", "suspended"]
+
+
 class ClaimCreate(BaseModel):
     claim_type: ClaimTypeEnum = Field(alias="claimType")
     policy_number: str = Field(alias="policyNumber")
