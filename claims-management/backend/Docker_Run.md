@@ -57,3 +57,19 @@ If you run `docker compose down` from `D:\ClaimFlow` and get an error, it means 
 Use one of these:
 - `cd D:\ClaimFlow\claims-management\backend` first, then run compose commands
 - or always use `-f D:\ClaimFlow\claims-management\backend\docker-compose.yml`
+
+## Render Deploy (Port Timeout Fix)
+
+If Render logs show `Port scan timeout reached, no open ports detected`, use these settings:
+
+- Root Directory: `claims-management/backend`
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- Health Check Path: `/`
+
+This repository now includes `D:\ClaimFlow\render.yaml` with the same configuration so Render can pick up consistent settings.
+
+Important checks:
+- Service type must be `Web Service` (not `Background Worker`).
+- `DATABASE_URL` must be set in Render environment variables.
+- If you changed settings in dashboard, trigger a `Manual Deploy` after saving.
