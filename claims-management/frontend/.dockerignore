@@ -1,0 +1,8 @@
+node_modules
+npm-debug.log
+dist
+test-results
+.playwright-auth-report.json
+.git
+.gitignore
+.vscode
