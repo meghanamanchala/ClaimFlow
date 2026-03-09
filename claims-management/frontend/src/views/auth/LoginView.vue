@@ -78,7 +78,8 @@ async function submitLogin() {
   successMessage.value = '';
 
   try {
-    const { data } = await loginUser(form.email, form.password);
+    const normalizedEmail = String(form.email || '').trim().toLowerCase();
+    const { data } = await loginUser(normalizedEmail, form.password);
     localStorage.setItem('claimflow_token', data.access_token);
     localStorage.setItem('claimflow_role', form.role);
 
@@ -94,6 +95,8 @@ async function submitLogin() {
 
     router.push('/dashboard');
   } catch (error) {
+    localStorage.removeItem('claimflow_token');
+    localStorage.removeItem('claimflow_role');
     errorMessage.value = error.response?.data?.detail || 'Login failed. Please try again.';
   } finally {
     loading.value = false;
