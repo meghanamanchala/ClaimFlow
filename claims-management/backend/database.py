@@ -9,7 +9,12 @@ load_dotenv(Path(__file__).with_name('.env'))
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-engine = create_engine(DATABASE_URL)
+connect_args = {}
+if DATABASE_URL and DATABASE_URL.startswith("sqlite"):
+    # Needed for FastAPI TestClient + SQLite during integration tests.
+    connect_args = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 
 SessionLocal = sessionmaker(
     autocommit=False,
