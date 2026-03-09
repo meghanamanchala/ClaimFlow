@@ -63,6 +63,21 @@ export async function uploadClaimDocument(claimId, payload) {
   return api.post(`/claims/${claimId}/documents`, payload);
 }
 
+export async function uploadClaimDocumentFile(claimId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return api.post(`/claims/${claimId}/documents/upload`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+}
+
+export async function deleteClaimDocument(claimId, params) {
+  return api.delete(`/claims/${claimId}/documents`, { params });
+}
+
 export async function getUsers() {
   return api.get('/users');
 }

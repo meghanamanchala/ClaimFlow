@@ -1,8 +1,12 @@
 from datetime import datetime, timezone
+import re
+import shutil
+from pathlib import Path
 from typing import List
 
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from claims import router as claims_router
@@ -33,6 +37,9 @@ from dependencies import get_current_user, require_roles
 
 app = FastAPI()
 
+UPLOADS_DIR = Path(__file__).with_name("uploads")
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -44,6 +51,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 
 app.include_router(claims_router)
@@ -141,6 +150,22 @@ def build_timeline_entry(status: str) -> dict:
         "step": STATUS_TIMELINE_STEP.get(status, status.replace("_", " ").title()),
         "date": datetime.now(timezone.utc).isoformat(),
     }
+
+
+def sanitize_file_name(file_name: str) -> str:
+    base_name = Path(file_name or "document").name
+    safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", base_name).strip("._")
+    return safe_name or "document"
+
+
+def extract_upload_relative_path(file_url: str | None) -> str | None:
+    if not file_url:
+        return None
+    marker = "/uploads/"
+    index = file_url.find(marker)
+    if index == -1:
+        return None
+    return file_url[index + len(marker):].lstrip("/")
 
 
 def ensure_claim_access(claim: Claim, current_user: User):
@@ -418,6 +443,101 @@ def add_claim_document(
     documents = claim.documents or []
     documents.extend(map_documents([document]))
     claim.documents = documents
+    db.commit()
+    db.refresh(claim)
+    return claim
+
+
+@app.post("/claims/{claim_id}/documents/upload", response_model=ClaimResponse)
+async def upload_claim_document_file(
+    claim_id: int,
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["policyholder", "agent", "admin"])),
+):
+    claim = db.query(Claim).filter(Claim.id == claim_id).first()
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    ensure_claim_access(claim, current_user)
+
+    safe_name = sanitize_file_name(file.filename or "document")
+    claim_dir = UPLOADS_DIR / f"claim_{claim.id}"
+    claim_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+    stored_name = f"{timestamp}_{safe_name}"
+    target_path = claim_dir / stored_name
+
+    try:
+        with target_path.open("wb") as output:
+            shutil.copyfileobj(file.file, output)
+    finally:
+        await file.close()
+
+    file_size_mb = round(target_path.stat().st_size / (1024 * 1024), 3)
+    extension = Path(safe_name).suffix.lstrip(".").upper() or "FILE"
+    relative_path = target_path.relative_to(UPLOADS_DIR).as_posix()
+    file_url = f"{str(request.base_url).rstrip('/')}/uploads/{relative_path}"
+
+    uploaded_doc = {
+        "fileName": safe_name,
+        "fileUrl": file_url,
+        "fileType": extension,
+        "size": file_size_mb,
+        "uploadedAt": datetime.now(timezone.utc).isoformat(),
+    }
+
+    documents = claim.documents or []
+    documents.append(uploaded_doc)
+    claim.documents = documents
+
+    db.commit()
+    db.refresh(claim)
+    return claim
+
+
+@app.delete("/claims/{claim_id}/documents", response_model=ClaimResponse)
+def delete_claim_document(
+    claim_id: int,
+    file_name: str = Query(..., alias="fileName"),
+    file_url: str | None = Query(default=None, alias="fileUrl"),
+    uploaded_at: str | None = Query(default=None, alias="uploadedAt"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["policyholder", "agent", "admin"])),
+):
+    claim = db.query(Claim).filter(Claim.id == claim_id).first()
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    ensure_claim_access(claim, current_user)
+
+    documents = claim.documents or []
+
+    def matches(document: dict) -> bool:
+        if document.get("fileName") != file_name:
+            return False
+        if file_url is not None and document.get("fileUrl") != file_url:
+            return False
+        if uploaded_at is not None and document.get("uploadedAt") != uploaded_at:
+            return False
+        return True
+
+    removed_documents = [doc for doc in documents if matches(doc)]
+    remaining_documents = [doc for doc in documents if not matches(doc)]
+    if not removed_documents:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    for removed in removed_documents:
+        relative_path = extract_upload_relative_path(removed.get("fileUrl"))
+        if not relative_path:
+            continue
+        path = UPLOADS_DIR / relative_path
+        if path.exists() and path.is_file():
+            path.unlink()
+
+    claim.documents = remaining_documents
     db.commit()
     db.refresh(claim)
     return claim
