@@ -8,6 +8,7 @@ import MyClaimsView from '../views/policyholder/MyClaimsView.vue';
 import DocumentsView from '../views/policyholder/DocumentsView.vue';
 import ClaimHistoryView from '../views/policyholder/ClaimHistoryView.vue';
 import ProfileView from '../views/shared/ProfileView.vue';
+import NotificationsView from '../views/shared/NotificationsView.vue';
 import AgentLayout from '../layouts/AgentLayout.vue';
 import AgentDashboardView from '../views/agent/AgentDashboardView.vue';
 import AssignedClaimsView from '../views/agent/AssignedClaimsView.vue';
@@ -83,6 +84,11 @@ const routes = [
         path: 'profile',
         name: 'profile',
         component: ProfileView
+      },
+      {
+        path: 'notifications',
+        name: 'notifications',
+        component: NotificationsView
       }
     ]
   },
@@ -138,6 +144,11 @@ const routes = [
         path: 'profile',
         name: 'agent-profile',
         component: ProfileView
+      },
+      {
+        path: 'notifications',
+        name: 'agent-notifications',
+        component: NotificationsView
       }
     ]
   },
@@ -187,6 +198,11 @@ const routes = [
         path: 'profile',
         name: 'admin-profile',
         component: ProfileView
+      },
+      {
+        path: 'notifications',
+        name: 'admin-notifications',
+        component: NotificationsView
       }
     ]
   },

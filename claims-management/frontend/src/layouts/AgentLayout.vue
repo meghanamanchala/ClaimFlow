@@ -52,9 +52,45 @@
         </div>
 
         <div class="topbar-user-block">
-          <button type="button" class="topbar-bell" aria-label="Open notifications">
-            <span class="notification-dot"></span>
-          </button>
+          <div class="topbar-notifications" ref="notificationsRef">
+            <button
+              type="button"
+              class="topbar-bell"
+              :class="{ 'is-open': showNotifications }"
+              aria-label="Open notifications"
+              @click="handleBellClick"
+              @dblclick.stop="handleBellDoubleClick"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M15 17h5l-1.4-1.4a2 2 0 0 1-.6-1.4V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5"></path>
+                <path d="M9 17a3 3 0 0 0 6 0"></path>
+              </svg>
+              <span v-if="hasUnreadNotifications" class="notification-dot"></span>
+            </button>
+
+            <div v-if="showNotifications" class="topbar-notifications-panel">
+              <div class="notifications-head">
+                <p>Notifications</p>
+                <button type="button" @click="markAllRead">Mark all read</button>
+              </div>
+
+              <ul class="notification-list" v-if="notifications.length">
+                <li
+                  v-for="item in notifications"
+                  :key="item.id"
+                  class="notification-item"
+                  :class="{ 'is-unread': !item.read }"
+                >
+                  <p class="notification-title">{{ item.title }}</p>
+                  <p class="notification-copy">{{ item.message }}</p>
+                  <p class="notification-time">{{ item.time }}</p>
+                </li>
+              </ul>
+
+              <p v-else class="notification-empty">No notifications yet.</p>
+            </div>
+          </div>
+
           <div class="topbar-avatar">{{ avatarInitials }}</div>
           <RouterLink to="/agent/profile" class="topbar-name topbar-name-link">{{ displayName }}</RouterLink>
           <button type="button" class="topbar-logout" @click="logout" aria-label="Logout">
@@ -75,14 +111,24 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNavbarProfile } from '../composables/useNavbarProfile';
+import { useTopbarNotifications } from '../composables/useTopbarNotifications';
 
 const router = useRouter();
 const { displayName, avatarInitials } = useNavbarProfile();
+const {
+  notificationsRef,
+  showNotifications,
+  notifications,
+  hasUnreadNotifications,
+  toggleNotifications,
+  markAllRead,
+} = useTopbarNotifications('agent');
 const SIDEBAR_STATE_KEY = 'claimflow_sidebar_collapsed';
 const isSidebarCollapsed = ref(false);
+let bellClickTimer = null;
 
 const navItems = [
   {
@@ -111,9 +157,39 @@ onMounted(() => {
   isSidebarCollapsed.value = localStorage.getItem(SIDEBAR_STATE_KEY) === 'true';
 });
 
+onBeforeUnmount(() => {
+  if (bellClickTimer) {
+    window.clearTimeout(bellClickTimer);
+    bellClickTimer = null;
+  }
+});
+
 function toggleSidebar() {
   isSidebarCollapsed.value = !isSidebarCollapsed.value;
   localStorage.setItem(SIDEBAR_STATE_KEY, String(isSidebarCollapsed.value));
+}
+
+function goToNotifications() {
+  router.push('/agent/notifications');
+}
+
+function handleBellClick() {
+  if (bellClickTimer) {
+    window.clearTimeout(bellClickTimer);
+  }
+
+  bellClickTimer = window.setTimeout(() => {
+    toggleNotifications();
+    bellClickTimer = null;
+  }, 220);
+}
+
+function handleBellDoubleClick() {
+  if (bellClickTimer) {
+    window.clearTimeout(bellClickTimer);
+    bellClickTimer = null;
+  }
+  goToNotifications();
 }
 
 function logout() {
