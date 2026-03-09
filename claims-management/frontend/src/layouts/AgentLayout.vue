@@ -1,18 +1,32 @@
 <template>
-  <div class="policyholder-shell">
+  <div class="policyholder-shell" :class="{ 'is-sidebar-collapsed': isSidebarCollapsed }">
     <aside class="dashboard-sidebar">
       <div class="sidebar-brand">
-        <div class="brand-badge">O</div>
+        <div class="brand-badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l7 4v5c0 5-3.2 8-7 9-3.8-1-7-4-7-9V7z"></path>
+          </svg>
+        </div>
         <div class="brand-text">ClaimFlow</div>
       </div>
 
       <div class="sidebar-nav-wrap">
         <p class="sidebar-label">Navigation</p>
         <nav class="sidebar-nav">
-          <RouterLink to="/agent/dashboard" class="sidebar-link">Dashboard</RouterLink>
-          <RouterLink to="/agent/assigned-claims" class="sidebar-link">Assigned Claims</RouterLink>
-          <RouterLink to="/agent/review-claims" class="sidebar-link">Review Claims</RouterLink>
-          <RouterLink to="/agent/messages" class="sidebar-link">Messages</RouterLink>
+          <RouterLink
+            v-for="item in navItems"
+            :key="item.to"
+            :to="item.to"
+            class="sidebar-link"
+            :title="isSidebarCollapsed ? item.label : ''"
+          >
+            <span class="sidebar-link-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path v-for="(segment, index) in item.iconPaths" :key="index" :d="segment"></path>
+              </svg>
+            </span>
+            <span class="sidebar-link-label">{{ item.label }}</span>
+          </RouterLink>
         </nav>
       </div>
 
@@ -21,7 +35,21 @@
 
     <div class="dashboard-main">
       <header class="dashboard-topbar">
-        <div class="topbar-breadcrumb">Agent Dashboard</div>
+        <div class="topbar-breadcrumb">
+          <button
+            type="button"
+            class="sidebar-toggle-btn"
+            @click="toggleSidebar"
+            :aria-expanded="String(!isSidebarCollapsed)"
+            aria-label="Toggle navigation sidebar"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+              <path d="M9 5v14"></path>
+            </svg>
+          </button>
+          <span>Agent Dashboard</span>
+        </div>
 
         <div class="topbar-user-block">
           <button type="button" class="topbar-bell" aria-label="Open notifications">
@@ -41,11 +69,46 @@
 </template>
 
 <script setup>
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNavbarProfile } from '../composables/useNavbarProfile';
 
 const router = useRouter();
 const { displayName, avatarInitials } = useNavbarProfile();
+const SIDEBAR_STATE_KEY = 'claimflow_sidebar_collapsed';
+const isSidebarCollapsed = ref(false);
+
+const navItems = [
+  {
+    to: '/agent/dashboard',
+    label: 'Dashboard',
+    iconPaths: ['M3 12l9-9 9 9', 'M5 10v10h5v-6h4v6h5V10'],
+  },
+  {
+    to: '/agent/assigned-claims',
+    label: 'Assigned Claims',
+    iconPaths: ['M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 2v6h6', 'M9 13h6', 'M9 17h6'],
+  },
+  {
+    to: '/agent/review-claims',
+    label: 'Review Claims',
+    iconPaths: ['M12 20h9', 'M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z'],
+  },
+  {
+    to: '/agent/messages',
+    label: 'Messages',
+    iconPaths: ['M4 6h16v10H8l-4 4z', 'M8 10h8', 'M8 13h5'],
+  },
+];
+
+onMounted(() => {
+  isSidebarCollapsed.value = localStorage.getItem(SIDEBAR_STATE_KEY) === 'true';
+});
+
+function toggleSidebar() {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value;
+  localStorage.setItem(SIDEBAR_STATE_KEY, String(isSidebarCollapsed.value));
+}
 
 function logout() {
   localStorage.removeItem('claimflow_token');
