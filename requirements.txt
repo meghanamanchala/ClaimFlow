@@ -1,1 +1,1 @@
--r claims-management/backend/requirements.txt
+-r backend/requirements.txt
