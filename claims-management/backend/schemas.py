@@ -146,7 +146,7 @@ class ClaimTrackingResponse(BaseModel):
 
 
 class ClaimDecisionUpdate(BaseModel):
-    decision: Literal["approved", "rejected", "under_review"]
+    decision: Literal["approved", "rejected", "under_review", "paid"]
     agent_notes: str | None = Field(default=None, alias="agentNotes")
     approved_amount: float | None = Field(default=None, alias="approvedAmount")
     rejection_reason: str | None = Field(default=None, alias="rejectionReason")

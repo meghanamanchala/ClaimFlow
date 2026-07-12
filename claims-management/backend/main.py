@@ -188,7 +188,7 @@ def ensure_claim_access(claim: Claim, current_user: User):
 
 
 def append_timeline_if_new(claim: Claim, status: str):
-    timeline = claim.timeline or []
+    timeline = list(claim.timeline or [])
     step_name = STATUS_TIMELINE_STEP.get(status, status.replace("_", " ").title())
 
     last_step = (timeline[-1] or {}).get("step") if timeline else None
@@ -451,7 +451,7 @@ def add_claim_document(
     if user_role == "policyholder" and claim.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Cannot upload documents for another user's claim")
 
-    documents = claim.documents or []
+    documents = list(claim.documents or [])
     documents.extend(map_documents([document]))
     claim.documents = documents
     db.commit()
@@ -500,7 +500,7 @@ async def upload_claim_document_file(
         "uploadedAt": datetime.now(timezone.utc).isoformat(),
     }
 
-    documents = claim.documents or []
+    documents = list(claim.documents or [])
     documents.append(uploaded_doc)
     claim.documents = documents
 
@@ -666,6 +666,14 @@ def update_claim_decision(
         claim.approved_amount = None
         claim.approved_at = None
         claim.rejection_reason = payload.rejection_reason or "No reason provided"
+        claim.resolved_at = now
+    elif decision == "paid":
+        if claim.status != "approved":
+            raise HTTPException(
+                status_code=400,
+                detail="Only approved claims can be processed for payment",
+            )
+        claim.status = "paid"
         claim.resolved_at = now
     else:
         claim.status = "under_review"

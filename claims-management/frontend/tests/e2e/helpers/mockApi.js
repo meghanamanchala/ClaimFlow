@@ -200,10 +200,12 @@ export async function attachApiMocks(page, role = 'policyholder') {
     }
 
     if (url.pathname.match(/^\/claims\/\d+\/decision$/) && method === 'PATCH') {
+      const payload = route.request().postDataJSON() || {};
+      const status = payload.decision === 'paid' ? 'paid' : (payload.decision === 'rejected' ? 'rejected' : 'approved');
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ ...SAMPLE_CLAIMS[0], status: 'approved' })
+        body: JSON.stringify({ ...SAMPLE_CLAIMS[0], status })
       });
       return;
     }
