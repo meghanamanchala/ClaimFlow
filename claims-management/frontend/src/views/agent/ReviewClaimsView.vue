@@ -82,18 +82,39 @@
 
         <article class="panel">
           <h2>Decision</h2>
-          <label class="field">
-            <span>Notes</span>
-            <textarea rows="4" v-model="notes" placeholder="Add review notes..."></textarea>
-          </label>
-          <p v-if="decisionMessage" class="form-message success">{{ decisionMessage }}</p>
-          <div class="decision-actions">
-            <button type="button" class="danger-btn" :disabled="decisionLoading" @click="applyDecision('rejected')">
-              {{ decisionLoading ? 'Saving...' : 'Reject' }}
-            </button>
-            <button type="button" class="primary-btn" :disabled="decisionLoading" @click="applyDecision('approved')">
-              {{ decisionLoading ? 'Saving...' : 'Approve' }}
-            </button>
+          <div v-if="selectedClaim.status === 'paid'">
+            <p class="form-message success">Payment has already been processed for this claim.</p>
+            <p v-if="selectedClaim.agentNotes" class="review-label" style="margin-top: 1rem;">Agent/Admin Notes:</p>
+            <p v-if="selectedClaim.agentNotes">{{ selectedClaim.agentNotes }}</p>
+          </div>
+          <div v-else-if="selectedClaim.status === 'rejected'">
+            <p class="form-message error">This claim has been rejected.</p>
+            <p v-if="selectedClaim.rejectionReason" class="review-label" style="margin-top: 1rem;">Rejection Reason:</p>
+            <p v-if="selectedClaim.rejectionReason">{{ selectedClaim.rejectionReason }}</p>
+            <p v-if="selectedClaim.agentNotes && !selectedClaim.rejectionReason" class="review-label" style="margin-top: 1rem;">Agent/Admin Notes:</p>
+            <p v-if="selectedClaim.agentNotes && !selectedClaim.rejectionReason">{{ selectedClaim.agentNotes }}</p>
+          </div>
+          <div v-else>
+            <label class="field">
+              <span>Notes</span>
+              <textarea rows="4" v-model="notes" placeholder="Add review notes..."></textarea>
+            </label>
+            <p v-if="decisionMessage" class="form-message success">{{ decisionMessage }}</p>
+            <div class="decision-actions">
+              <template v-if="selectedClaim.status === 'approved'">
+                <button type="button" class="primary-btn" :disabled="decisionLoading" @click="applyDecision('paid')">
+                  {{ decisionLoading ? 'Saving...' : 'Process Payout' }}
+                </button>
+              </template>
+              <template v-else>
+                <button type="button" class="danger-btn" :disabled="decisionLoading" @click="applyDecision('rejected')">
+                  {{ decisionLoading ? 'Saving...' : 'Reject' }}
+                </button>
+                <button type="button" class="primary-btn" :disabled="decisionLoading" @click="applyDecision('approved')">
+                  {{ decisionLoading ? 'Saving...' : 'Approve' }}
+                </button>
+              </template>
+            </div>
           </div>
         </article>
       </div>

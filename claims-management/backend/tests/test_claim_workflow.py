@@ -172,3 +172,84 @@ def test_policyholder_cannot_open_other_users_claim(client):
     blocked_response = client.get(f"/claims/{claim_id}", headers=auth_headers(auth["holder_token"]))
 
     assert blocked_response.status_code == 403
+
+
+def test_claim_payout_lifecycle(client):
+    auth = bootstrap_users(client)
+
+    create_policy_response = client.post(
+        "/policies",
+        json={
+            "policy_number": "POL-2026-0003",
+            "coverage_amount": 15000,
+            "user_id": auth["policyholder_id"],
+        },
+        headers=auth_headers(auth["admin_token"]),
+    )
+    assert create_policy_response.status_code == 200
+
+    claim_response = client.post(
+        "/claims",
+        json={
+            "claimType": "Property",
+            "policyNumber": "POL-2026-0003",
+            "incidentDate": "2026-03-03",
+            "estimatedAmount": 6000,
+            "description": "Basement flooding",
+            "documents": [],
+        },
+        headers=auth_headers(auth["holder_token"]),
+    )
+    assert claim_response.status_code == 200
+    claim_id = claim_response.json()["id"]
+
+    # Trying to mark as paid directly should fail since it's not approved yet
+    direct_pay_response = client.patch(
+        f"/claims/{claim_id}/decision",
+        json={
+            "decision": "paid",
+            "agentNotes": "Attempting payout directly",
+        },
+        headers=auth_headers(auth["agent_token"]),
+    )
+    assert direct_pay_response.status_code == 400
+    assert direct_pay_response.json()["detail"] == "Only approved claims can be processed for payment"
+
+    # Approve the claim first
+    approve_response = client.patch(
+        f"/claims/{claim_id}/decision",
+        json={
+            "decision": "approved",
+            "agentNotes": "Damage verified",
+            "approvedAmount": 5500,
+        },
+        headers=auth_headers(auth["agent_token"]),
+    )
+    assert approve_response.status_code == 200
+    assert approve_response.json()["status"] == "approved"
+
+    # Process the payout successfully
+    pay_response = client.patch(
+        f"/claims/{claim_id}/decision",
+        json={
+            "decision": "paid",
+            "agentNotes": "Payout disbursed to policyholder bank account",
+        },
+        headers=auth_headers(auth["agent_token"]),
+    )
+    assert pay_response.status_code == 200
+    
+    updated_claim = pay_response.json()
+    assert updated_claim["status"] == "paid"
+    assert updated_claim["approvedAmount"] == 5500
+    assert updated_claim["agentNotes"] == "Payout disbursed to policyholder bank account"
+
+    # Verify timeline has "Payment Processed"
+    tracking_response = client.get(
+        f"/claims/{claim_id}/tracking",
+        headers=auth_headers(auth["holder_token"]),
+    )
+    assert tracking_response.status_code == 200
+    timeline = tracking_response.json()["timeline"]
+    assert any(step["step"] == "Payment Processed" for step in timeline)
+
