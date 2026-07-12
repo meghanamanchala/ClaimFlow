@@ -7,7 +7,7 @@ This project uses Docker Compose to run both services:
 ## Option 1: Run From Backend Folder (Recommended)
 
 ```powershell
-cd D:\ClaimFlow\claims-management\backend
+cd D:\ClaimFlow\backend
 docker compose up --build -d
 ```
 
@@ -19,20 +19,20 @@ Open in browser:
 ## Option 2: Run From Anywhere
 
 ```powershell
-docker compose -f D:\ClaimFlow\claims-management\backend\docker-compose.yml up --build -d
+docker compose -f D:\ClaimFlow\backend\docker-compose.yml up --build -d
 ```
 
 ## Check Status
 
 ```powershell
-cd D:\ClaimFlow\claims-management\backend
+cd D:\ClaimFlow\backend
 docker compose ps
 ```
 
 ## View Logs
 
 ```powershell
-cd D:\ClaimFlow\claims-management\backend
+cd D:\ClaimFlow\backend
 docker compose logs -f api
 docker compose logs -f frontend
 ```
@@ -40,14 +40,14 @@ docker compose logs -f frontend
 ## Stop Everything
 
 ```powershell
-cd D:\ClaimFlow\claims-management\backend
+cd D:\ClaimFlow\backend
 docker compose down
 ```
 
 Or from anywhere:
 
 ```powershell
-docker compose -f D:\ClaimFlow\claims-management\backend\docker-compose.yml down
+docker compose -f D:\ClaimFlow\backend\docker-compose.yml down
 ```
 
 ## Common Error
@@ -55,14 +55,14 @@ docker compose -f D:\ClaimFlow\claims-management\backend\docker-compose.yml down
 If you run `docker compose down` from `D:\ClaimFlow` and get an error, it means Docker cannot find `docker-compose.yml` in the current folder.
 
 Use one of these:
-- `cd D:\ClaimFlow\claims-management\backend` first, then run compose commands
-- or always use `-f D:\ClaimFlow\claims-management\backend\docker-compose.yml`
+- `cd D:\ClaimFlow\backend` first, then run compose commands
+- or always use `-f D:\ClaimFlow\backend\docker-compose.yml`
 
 ## Render Deploy (Port Timeout Fix)
 
 If Render logs show `Port scan timeout reached, no open ports detected`, use these settings:
 
-- Root Directory: `claims-management/backend`
+- Root Directory: `backend`
 - Build Command: `pip install -r requirements.txt`
 - Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 - Health Check Path: `/`
