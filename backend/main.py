@@ -10,7 +10,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
-from claims import router as claims_router
 
 from database import engine, SessionLocal
 from models import Base, User, Claim, Policy, Message, PermissionSetting, SystemSetting
@@ -64,7 +63,12 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 
-app.include_router(claims_router)
+@app.get("/dashboard")
+def dashboard(current_user: User = Depends(get_current_user)):
+    return {
+        "message": f"Welcome {current_user.name}",
+        "role": current_user.role
+    }
 
 Base.metadata.create_all(bind=engine)
 
