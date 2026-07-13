@@ -21,3 +21,7 @@ __pycache__/
 venv/
 .env
 .pytest_cache/
+
+# Database seeding script
+seed.py
+
